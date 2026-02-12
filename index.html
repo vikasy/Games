@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Games</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #0f0f23;
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 16px;
+        }
+        h1 {
+            font-size: 2.5rem;
+            color: #fff;
+            letter-spacing: 4px;
+            margin-bottom: 8px;
+        }
+        p.subtitle {
+            color: #888;
+            margin-bottom: 40px;
+        }
+        .games {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 900px;
+        }
+        .game-card {
+            background: #16213e;
+            border: 2px solid #333;
+            border-radius: 16px;
+            padding: 32px 28px;
+            width: 260px;
+            text-align: center;
+            text-decoration: none;
+            color: inherit;
+            transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+        }
+        .game-card:hover {
+            transform: translateY(-6px);
+            border-color: #ffd700;
+            box-shadow: 0 8px 24px rgba(255, 215, 0, 0.15);
+        }
+        .game-card .icon {
+            font-size: 3rem;
+            margin-bottom: 12px;
+        }
+        .game-card h2 {
+            font-size: 1.2rem;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+        .game-card p {
+            font-size: 0.85rem;
+            color: #888;
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+    <h1>GAMES</h1>
+    <p class="subtitle">Pick a game to play</p>
+
+    <div class="games">
+        <a href="tictactoe/index.html" class="game-card">
+            <div class="icon">#</div>
+            <h2>Tic Tac Toe</h2>
+            <p>Classic grid game vs computer. Choose 3&times;3 or 4&times;4 board.</p>
+        </a>
+
+        <a href="playpoker/index.html" class="game-card">
+            <div class="icon">&spades;</div>
+            <h2>Texas Hold'em</h2>
+            <p>Play poker against 3 opponents. Full hand evaluation from Royal Flush to High Card.</p>
+        </a>
+
+        <a href="dealnodeal/index.html" class="game-card">
+            <div class="icon">$</div>
+            <h2>Deal or No Deal</h2>
+            <p>26 briefcases, $0.01 to $1M. Take the banker's offer or risk it all.</p>
+        </a>
+    </div>
+
+    <footer style="margin-top:48px;color:#555;font-size:0.75rem;">&copy; 2017-2026 Vikas Yadav. All rights reserved.</footer>
+</body>
+</html>

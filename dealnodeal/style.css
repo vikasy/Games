@@ -1,0 +1,234 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #1a0a2e;
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+header {
+    text-align: center;
+    padding: 20px 16px 4px;
+}
+
+header h1 {
+    font-size: 2rem;
+    color: #ffd700;
+    letter-spacing: 3px;
+}
+
+header p { color: #a88; margin-top: 4px; }
+
+a.back {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    color: #a88;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+a.back:hover { color: #fff; }
+
+.game-area {
+    display: flex;
+    gap: 20px;
+    margin: 12px auto;
+    max-width: 900px;
+    width: 95%;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* Money board */
+.money-board {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 140px;
+}
+
+.money-row {
+    display: flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: opacity 0.3s, background 0.3s;
+}
+
+.money-row.eliminated {
+    opacity: 0.25;
+    text-decoration: line-through;
+}
+
+.money-low {
+    background: #1a2a5a;
+    color: #6af;
+}
+
+.money-high {
+    background: #5a3a0a;
+    color: #ffd700;
+}
+
+/* Briefcases grid */
+.cases-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+    flex: 1;
+    min-width: 300px;
+    max-width: 420px;
+}
+
+.case-btn {
+    width: 60px;
+    height: 60px;
+    border: 2px solid #886;
+    border-radius: 8px;
+    background: linear-gradient(145deg, #8b6914, #a07818);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.15s, opacity 0.3s, background 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.case-btn:hover:not(.opened):not(.player-case):not(:disabled) {
+    transform: scale(1.08);
+    border-color: #ffd700;
+}
+
+.case-btn.player-case {
+    border-color: #ffd700;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.case-btn.opened {
+    background: #333;
+    border-color: #555;
+    color: #666;
+    cursor: default;
+    opacity: 0.5;
+}
+
+.case-btn.revealed {
+    background: #2a0a0a;
+    border-color: #c00;
+    animation: caseOpen 0.5s ease-out;
+}
+
+@keyframes caseOpen {
+    0% { transform: scale(1.2) rotateY(180deg); }
+    100% { transform: scale(1) rotateY(0); }
+}
+
+/* Status and offer area */
+#status {
+    font-size: 1.1rem;
+    margin: 12px 0;
+    text-align: center;
+    color: #ffd700;
+    min-height: 1.4em;
+}
+
+.offer-box {
+    background: #2a1a3e;
+    border: 3px solid #ffd700;
+    border-radius: 12px;
+    padding: 20px 32px;
+    text-align: center;
+    margin: 8px auto;
+    max-width: 360px;
+    display: none;
+}
+
+.offer-box.visible { display: block; animation: fadeIn 0.5s; }
+
+@keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+
+.offer-box h2 {
+    color: #ffd700;
+    font-size: 1.5rem;
+    margin-bottom: 8px;
+}
+
+.offer-box .amount {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 8px 0 16px;
+}
+
+.offer-box .buttons {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+}
+
+.offer-box button {
+    padding: 10px 28px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+#deal-btn {
+    background: #4caf50;
+    color: #fff;
+}
+#deal-btn:hover { background: #3d9040; }
+
+#nodeal-btn {
+    background: #e94560;
+    color: #fff;
+}
+#nodeal-btn:hover { background: #c73650; }
+
+.controls {
+    margin: 12px 0;
+}
+
+.controls button {
+    padding: 10px 28px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    background: #ffd700;
+    color: #1a0a2e;
+}
+
+.controls button:hover { background: #eec600; }
+
+.round-info {
+    font-size: 0.9rem;
+    color: #a88;
+    text-align: center;
+    margin: 4px 0;
+}
+
+.previous-offers {
+    font-size: 0.8rem;
+    color: #888;
+    text-align: center;
+    margin: 8px 0 20px;
+    max-width: 500px;
+}
+
+.previous-offers span {
+    color: #cc9;
+}

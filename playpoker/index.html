@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Texas Hold'em Poker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <a href="../index.html" class="back">&larr; All Games</a>
+    <header>
+        <h1>TEXAS HOLD'EM</h1>
+        <p>You vs 3 Opponents &mdash; Blinds $10/$20</p>
+    </header>
+
+    <div class="table">
+        <div class="community">
+            <h3>Community Cards</h3>
+            <div class="cards" id="community-cards"></div>
+        </div>
+        <div id="pot-display" class="pot-display"></div>
+        <div class="players" id="players"></div>
+    </div>
+
+    <div id="status"></div>
+
+    <div class="controls">
+        <div class="difficulty-group">
+            <label for="difficulty-select">Difficulty:</label>
+            <select id="difficulty-select">
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+            </select>
+        </div>
+        <button id="deal-btn">Deal</button>
+    </div>
+
+    <div class="actions" id="actions" style="display:none">
+        <button id="fold-btn" class="action-btn fold">Fold</button>
+        <button id="check-call-btn" class="action-btn call">Check</button>
+        <div class="raise-group">
+            <button id="raise-btn" class="action-btn raise">Raise</button>
+            <input type="number" id="raise-amount" min="20" value="20" step="10">
+        </div>
+    </div>
+
+    <div class="side-buttons">
+        <button id="my-hand-btn" class="side-btn" title="Evaluate your hand">My Hand</button>
+        <button id="rankings-btn" class="side-btn" title="Hand rankings reference">?</button>
+    </div>
+
+    <div id="hand-tooltip" class="hand-tooltip" style="display:none"></div>
+
+    <div id="rankings-overlay" class="rankings-overlay" style="display:none">
+        <div class="rankings-modal">
+            <button id="rankings-close" class="rankings-close">&times;</button>
+            <h2>Hand Rankings</h2>
+            <p class="rankings-sub">Best to worst</p>
+            <ol class="rankings-list">
+                <li><strong>Royal Flush</strong><span>A K Q J 10, same suit</span></li>
+                <li><strong>Straight Flush</strong><span>5 consecutive cards, same suit</span></li>
+                <li><strong>Four of a Kind</strong><span>4 cards of the same rank</span></li>
+                <li><strong>Full House</strong><span>3 of a kind + a pair</span></li>
+                <li><strong>Flush</strong><span>5 cards of the same suit</span></li>
+                <li><strong>Straight</strong><span>5 consecutive cards, any suit</span></li>
+                <li><strong>Three of a Kind</strong><span>3 cards of the same rank</span></li>
+                <li><strong>Two Pair</strong><span>2 different pairs</span></li>
+                <li><strong>One Pair</strong><span>2 cards of the same rank</span></li>
+                <li><strong>High Card</strong><span>No combination — highest card plays</span></li>
+            </ol>
+        </div>
+    </div>
+
+    <footer class="copyright">&copy; 2017-2026 Vikas Yadav. All rights reserved.</footer>
+    <script src="game.js"></script>
+</body>
+</html>

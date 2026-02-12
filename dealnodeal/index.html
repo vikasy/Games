@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deal or No Deal</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <a href="../index.html" class="back">&larr; All Games</a>
+    <header>
+        <h1>DEAL OR NO DEAL</h1>
+        <p>26 Briefcases &mdash; $0.01 to $1,000,000</p>
+    </header>
+
+    <div id="status"></div>
+    <div id="round-info" class="round-info"></div>
+
+    <div class="game-area">
+        <div class="money-board" id="money-left"></div>
+        <div class="cases-grid" id="cases-grid"></div>
+        <div class="money-board" id="money-right"></div>
+    </div>
+
+    <div class="offer-box" id="offer-box">
+        <h2>BANKER'S OFFER</h2>
+        <div class="amount" id="offer-amount">$0</div>
+        <div class="buttons">
+            <button id="deal-btn">DEAL</button>
+            <button id="nodeal-btn">NO DEAL</button>
+        </div>
+    </div>
+
+    <div id="prev-offers" class="previous-offers"></div>
+
+    <div class="controls">
+        <button id="new-game-btn">New Game</button>
+    </div>
+
+    <footer class="copyright" style="margin-top:32px;color:#555;font-size:0.75rem;text-align:center;">&copy; 2017-2026 Vikas Yadav. All rights reserved.</footer>
+    <script src="game.js"></script>
+</body>
+</html>

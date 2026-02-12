@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic Tac Toe</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <a href="../index.html" class="back">&larr; All Games</a>
+    <header>
+        <h1>TIC TAC TOE</h1>
+        <p>Player vs Computer</p>
+    </header>
+
+    <div class="controls">
+        <label for="dim-select">Grid:</label>
+        <select id="dim-select">
+            <option value="3">3 &times; 3</option>
+            <option value="4">4 &times; 4</option>
+            <option value="5">5 &times; 5</option>
+        </select>
+        <button id="new-game">New Game</button>
+    </div>
+
+    <div id="status"></div>
+    <div id="board"></div>
+
+    <div class="scoreboard">
+        <div class="score-item">
+            <div class="label">You (X)</div>
+            <div class="value x" id="score-x">0</div>
+        </div>
+        <div class="score-item">
+            <div class="label">Computer (O)</div>
+            <div class="value o" id="score-o">0</div>
+        </div>
+        <div class="score-item">
+            <div class="label">Draws</div>
+            <div class="value d" id="score-d">0</div>
+        </div>
+    </div>
+
+    <footer class="copyright" style="margin-top:32px;color:#555;font-size:0.75rem;text-align:center;">&copy; 2017-2026 Vikas Yadav. All rights reserved.</footer>
+    <script src="game.js"></script>
+</body>
+</html>
