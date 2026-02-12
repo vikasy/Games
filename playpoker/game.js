@@ -69,6 +69,8 @@
     // --- Deal a new hand ---
     function dealNewHand() {
         if (gameOver) return;
+        ensureAudio();
+        sndDeal();
 
         deck = [];
         for (let s = 0; s < 4; s++)
@@ -219,6 +221,7 @@
     // --- Player actions ---
     function playerFold(idx) {
         players[idx].folded = true;
+        sndFold();
         logAction(idx, 'folds');
         moveToNextPlayer();
     }
@@ -238,6 +241,7 @@
         pot += actual;
         if (p.chips === 0) p.allIn = true;
         p._actedThisRound = true;
+        sndChip();
         logAction(idx, p.allIn ? `goes all-in ($${p.currentBet})` : `calls $${actual}`);
         moveToNextPlayer();
     }
@@ -259,6 +263,7 @@
                 other._actedThisRound = false;
             }
         });
+        sndChip();
         logAction(idx, p.allIn ? `goes all-in ($${p.currentBet})` : `raises to $${currentBet}`);
         moveToNextPlayer();
     }
@@ -510,6 +515,21 @@
         }
 
         renderAll();
+
+        // Apply win/loss animations after a frame so browser registers the initial state
+        if (stage === 4) {
+            requestAnimationFrame(() => {
+                const boxes = playersEl.querySelectorAll('.player-box');
+                const winnerIdxs = decideWinnerFromActive();
+                const humanWon = winnerIdxs.includes(0);
+                const humanLost = !humanWon && !players[0].folded;
+                if (humanWon) sndWin(); else if (humanLost) sndLose();
+                boxes.forEach((box, i) => {
+                    if (winnerIdxs.includes(i)) box.classList.add('anim-win');
+                    if (i === 0 && humanLost) box.classList.add('anim-lose');
+                });
+            });
+        }
     }
 
     function decideWinnerFromActive() {
@@ -718,7 +738,6 @@
             let cls = 'player-box';
             if (i === 0) cls += ' human';
             if (winnerIdxs.includes(i)) cls += ' winner';
-            if (stage === 4 && i === 0 && !winnerIdxs.includes(0) && !p.folded) cls += ' lost';
             if (p.folded) cls += ' folded';
             if (p.busted) cls += ' busted';
             if (p.allIn) cls += ' all-in';
@@ -963,6 +982,44 @@
     rankingsOverlay.addEventListener('click', function (e) {
         if (e.target === rankingsOverlay) rankingsOverlay.style.display = 'none';
     });
+
+    // --- Sound effects (Web Audio API) ---
+    let audioCtx = null;
+    function ensureAudio() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playTone(freq, dur, type, vol) {
+        ensureAudio();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type || 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(vol || 0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + dur);
+    }
+
+    function sndDeal() { playTone(800, 0.06, 'triangle', 0.1); }
+    function sndChip() {
+        // short bright noise-like click for chip toss
+        playTone(3000, 0.04, 'square', 0.04);
+        setTimeout(() => playTone(4500, 0.03, 'square', 0.03), 30);
+    }
+    function sndFold() { playTone(250, 0.15, 'sine', 0.06); }
+    function sndWin() {
+        playTone(523, 0.12, 'sine', 0.1);
+        setTimeout(() => playTone(659, 0.12, 'sine', 0.1), 100);
+        setTimeout(() => playTone(784, 0.18, 'sine', 0.1), 200);
+    }
+    function sndLose() {
+        playTone(300, 0.2, 'sine', 0.08);
+        setTimeout(() => playTone(220, 0.3, 'sine', 0.08), 150);
+    }
 
     // --- Event listeners ---
     dealBtn.addEventListener('click', dealNewHand);

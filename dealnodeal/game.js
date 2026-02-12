@@ -121,6 +121,7 @@
         if (stage === 'opening') {
             if (idx === playerCase || cases[idx].opened) return;
             // Open this case
+            sndCaseOpen();
             cases[idx].opened = true;
             casesOpenedThisRound++;
             // Mark money value as eliminated
@@ -166,11 +167,13 @@
     }
 
     function onDeal() {
+        sndDeal();
         const offer = offerList[offerList.length - 1];
         finishGame(true, offer);
     }
 
     function onNoDeal() {
+        sndNoDeal();
         offerBoxEl.classList.remove('visible');
         currentRound++;
         if (currentRound > NUM_ROUNDS - 1) {
@@ -192,24 +195,30 @@
         const won = isDeal ? offer : playerMoney;
 
         // Reveal player's case
+        sndBigReveal();
         cases[playerCase].opened = true;
         renderCases();
 
         // Determine if good or bad outcome
         const isGoodOutcome = isDeal ? (offer >= playerMoney) : (playerMoney >= 50000);
-        const caseBtn = casesGridEl.querySelector(`[data-idx="${playerCase}"]`);
+        setTimeout(() => { isGoodOutcome ? sndWin() : sndLose(); }, 400);
 
         if (isDeal) {
             const better = offer >= playerMoney;
             statusEl.textContent = `DEAL! You won $${offer.toLocaleString()}! (Your case had ${formatMoney(playerMoney)})`;
-            statusEl.className = better ? 'status-win' : 'status-lose';
         } else {
             statusEl.textContent = `You kept your case #${playerCase + 1} and won ${formatMoney(playerMoney)}!`;
-            statusEl.className = isGoodOutcome ? 'status-win' : 'status-lose';
         }
-
-        if (caseBtn) caseBtn.classList.add(isGoodOutcome ? 'won' : 'lost');
         roundInfoEl.textContent = 'Game over. Press New Game to play again.';
+
+        // Apply animations after a frame so browser registers initial state
+        requestAnimationFrame(() => {
+            statusEl.className = isGoodOutcome ? 'status-win' : 'status-lose';
+            const caseBtn = casesGridEl.querySelector(`[data-idx="${playerCase}"]`);
+            if (caseBtn) {
+                caseBtn.classList.add(isGoodOutcome ? 'won' : 'lost');
+            }
+        });
     }
 
     function updateAvg() {
@@ -275,6 +284,43 @@
             osc2.start(now + start);
             osc2.stop(now + end);
         });
+    }
+
+    // --- Game sound effects ---
+    function playTone(freq, dur, type, vol) {
+        ensureAudioCtx();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type || 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(vol || 0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + dur);
+    }
+
+    function sndCaseOpen() { playTone(700, 0.06, 'triangle', 0.1); }
+    function sndBigReveal() {
+        playTone(500, 0.08, 'triangle', 0.08);
+        setTimeout(() => playTone(900, 0.1, 'triangle', 0.08), 60);
+    }
+    function sndDeal() {
+        playTone(523, 0.12, 'sine', 0.1);
+        setTimeout(() => playTone(659, 0.12, 'sine', 0.1), 100);
+        setTimeout(() => playTone(784, 0.18, 'sine', 0.1), 200);
+    }
+    function sndNoDeal() { playTone(350, 0.15, 'triangle', 0.08); }
+    function sndWin() {
+        playTone(523, 0.12, 'sine', 0.1);
+        setTimeout(() => playTone(659, 0.12, 'sine', 0.1), 100);
+        setTimeout(() => playTone(784, 0.18, 'sine', 0.12), 200);
+        setTimeout(() => playTone(1047, 0.25, 'sine', 0.12), 320);
+    }
+    function sndLose() {
+        playTone(300, 0.2, 'sine', 0.08);
+        setTimeout(() => playTone(220, 0.3, 'sine', 0.08), 150);
     }
 
     dealBtnEl.addEventListener('click', onDeal);

@@ -135,34 +135,41 @@ a.back:hover { color: #fff; }
 .player-box.winner {
     border-color: #4caf50;
     background: rgba(76,175,80,0.15);
-    animation: winPulse 0.6s ease-in-out 3;
 }
 
-.player-box.human.winner {
-    animation: winBounce 0.5s ease 3;
+.player-box.anim-win {
+    animation: winPulse 0.8s ease-in-out 3;
 }
 
-.player-box.human.lost {
-    animation: loseShake 0.4s ease 2;
+.player-box.human.anim-win {
+    animation: winBounce 0.6s ease 3;
+}
+
+.player-box.human.anim-lose {
+    animation: loseShake 0.5s ease 3;
+    border-color: #e53935;
+    background: rgba(233,57,53,0.12);
 }
 
 @keyframes winPulse {
     0%, 100% { box-shadow: 0 0 0 rgba(76,175,80,0); }
-    50% { box-shadow: 0 0 20px rgba(76,175,80,0.6); }
+    50% { box-shadow: 0 0 30px rgba(76,175,80,0.7); }
 }
 
 @keyframes winBounce {
     0%, 100% { transform: translateY(0); box-shadow: 0 0 0 rgba(255,215,0,0); }
-    30% { transform: translateY(-8px); box-shadow: 0 0 24px rgba(255,215,0,0.5); }
-    60% { transform: translateY(-3px); }
+    30% { transform: translateY(-12px); box-shadow: 0 0 30px rgba(255,215,0,0.6); }
+    60% { transform: translateY(-4px); box-shadow: 0 0 15px rgba(255,215,0,0.3); }
 }
 
 @keyframes loseShake {
     0%, 100% { transform: translateX(0); }
-    20% { transform: translateX(-6px); }
-    40% { transform: translateX(6px); }
-    60% { transform: translateX(-4px); }
-    80% { transform: translateX(4px); }
+    15% { transform: translateX(-8px); }
+    30% { transform: translateX(8px); }
+    45% { transform: translateX(-6px); }
+    60% { transform: translateX(6px); }
+    75% { transform: translateX(-3px); }
+    90% { transform: translateX(3px); }
 }
 
 .player-box.folded {

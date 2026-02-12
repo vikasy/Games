@@ -248,12 +248,14 @@ a.back:hover { color: #fff; }
     animation: caseBounce 0.5s ease 3;
     box-shadow: 0 0 20px rgba(76,175,80,0.6);
     border-color: #4caf50;
+    opacity: 1;
 }
 
 .case-btn.player-case.lost {
     animation: caseShake 0.4s ease 2;
     box-shadow: 0 0 20px rgba(233,69,96,0.5);
     border-color: #e94560;
+    opacity: 1;
 }
 
 @keyframes statusPop {

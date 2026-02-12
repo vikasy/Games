@@ -53,6 +53,8 @@
         const r = parseInt(e.target.dataset.r);
         const c = parseInt(e.target.dataset.c);
         if (board[r][c]) return;
+        ensureAudio();
+        sndTap();
         makeMove(r, c, 'X');
         if (!gameOver) {
             currentPlayer = 'O';
@@ -66,22 +68,29 @@
         render();
         const result = checkWin(r, c, mark);
         if (result) {
-            highlightWin(result, mark);
             const winner = mark;
             scores[winner]++;
             updateScores();
             statusEl.textContent = winner === 'X' ? "You win!" : "Computer wins!";
-            statusEl.className = winner === 'X' ? 'status-win' : 'status-lose';
-            boardEl.className = winner === 'X' ? 'board-win' : 'board-lose';
             gameOver = true;
+            // Apply animations after a frame so browser registers initial state
+            requestAnimationFrame(() => {
+                highlightWin(result, mark);
+                statusEl.className = winner === 'X' ? 'status-win' : 'status-lose';
+                boardEl.classList.add(winner === 'X' ? 'board-win' : 'board-lose');
+                if (winner === 'X') sndWin(); else sndLose();
+            });
             return;
         }
         if (isDraw()) {
             scores.D++;
             updateScores();
             statusEl.textContent = "It's a draw!";
-            statusEl.className = 'status-draw';
             gameOver = true;
+            requestAnimationFrame(() => {
+                statusEl.className = 'status-draw';
+                sndDraw();
+            });
             return;
         }
     }
@@ -89,6 +98,7 @@
     function computerMove() {
         const move = getT3Move();
         if (move) {
+            sndPlace();
             makeMove(move[0], move[1], 'O');
             if (!gameOver) {
                 currentPlayer = 'X';
@@ -305,6 +315,40 @@
         document.getElementById('score-o').textContent = scores.O;
         document.getElementById('score-d').textContent = scores.D;
     }
+
+    // --- Sound effects (Web Audio API) ---
+    let audioCtx = null;
+    function ensureAudio() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playTone(freq, dur, type, vol) {
+        ensureAudio();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type || 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(vol || 0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + dur);
+    }
+
+    function sndTap() { playTone(600, 0.06, 'triangle', 0.1); }
+    function sndPlace() { playTone(400, 0.08, 'triangle', 0.07); }
+    function sndWin() {
+        playTone(523, 0.12, 'sine', 0.1);
+        setTimeout(() => playTone(659, 0.12, 'sine', 0.1), 100);
+        setTimeout(() => playTone(784, 0.18, 'sine', 0.1), 200);
+    }
+    function sndLose() {
+        playTone(300, 0.2, 'sine', 0.08);
+        setTimeout(() => playTone(220, 0.3, 'sine', 0.08), 150);
+    }
+    function sndDraw() { playTone(350, 0.25, 'triangle', 0.06); }
 
     newGameBtn.addEventListener('click', init);
     dimSelect.addEventListener('change', init);
