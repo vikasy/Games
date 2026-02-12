@@ -20,6 +20,8 @@
         gameOver = false;
         render();
         statusEl.textContent = "Your turn (X)";
+        statusEl.className = '';
+        boardEl.className = '';
     }
 
     function render() {
@@ -64,11 +66,13 @@
         render();
         const result = checkWin(r, c, mark);
         if (result) {
-            highlightWin(result);
+            highlightWin(result, mark);
             const winner = mark;
             scores[winner]++;
             updateScores();
             statusEl.textContent = winner === 'X' ? "You win!" : "Computer wins!";
+            statusEl.className = winner === 'X' ? 'status-win' : 'status-lose';
+            boardEl.className = winner === 'X' ? 'board-win' : 'board-lose';
             gameOver = true;
             return;
         }
@@ -76,6 +80,7 @@
             scores.D++;
             updateScores();
             statusEl.textContent = "It's a draw!";
+            statusEl.className = 'status-draw';
             gameOver = true;
             return;
         }
@@ -170,10 +175,11 @@
         return lines;
     }
 
-    function highlightWin(cells) {
+    function highlightWin(cells, mark) {
         const allCells = boardEl.querySelectorAll('.cell');
+        const cls = mark === 'X' ? 'win' : 'lose';
         cells.forEach(([r, c]) => {
-            allCells[r * DIM + c].classList.add('win');
+            allCells[r * DIM + c].classList.add(cls);
         });
     }
 

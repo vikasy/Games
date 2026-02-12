@@ -135,6 +135,34 @@ a.back:hover { color: #fff; }
 .player-box.winner {
     border-color: #4caf50;
     background: rgba(76,175,80,0.15);
+    animation: winPulse 0.6s ease-in-out 3;
+}
+
+.player-box.human.winner {
+    animation: winBounce 0.5s ease 3;
+}
+
+.player-box.human.lost {
+    animation: loseShake 0.4s ease 2;
+}
+
+@keyframes winPulse {
+    0%, 100% { box-shadow: 0 0 0 rgba(76,175,80,0); }
+    50% { box-shadow: 0 0 20px rgba(76,175,80,0.6); }
+}
+
+@keyframes winBounce {
+    0%, 100% { transform: translateY(0); box-shadow: 0 0 0 rgba(255,215,0,0); }
+    30% { transform: translateY(-8px); box-shadow: 0 0 24px rgba(255,215,0,0.5); }
+    60% { transform: translateY(-3px); }
+}
+
+@keyframes loseShake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
 }
 
 .player-box.folded {

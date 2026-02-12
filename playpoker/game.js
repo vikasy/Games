@@ -718,6 +718,7 @@
             let cls = 'player-box';
             if (i === 0) cls += ' human';
             if (winnerIdxs.includes(i)) cls += ' winner';
+            if (stage === 4 && i === 0 && !winnerIdxs.includes(0) && !p.folded) cls += ' lost';
             if (p.folded) cls += ' folded';
             if (p.busted) cls += ' busted';
             if (p.allIn) cls += ' all-in';

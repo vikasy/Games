@@ -59,6 +59,7 @@
         stage = 'select';
         offerBoxEl.classList.remove('visible');
         statusEl.textContent = 'Select your million-dollar briefcase!';
+        statusEl.className = '';
         roundInfoEl.textContent = '';
         prevOffersEl.innerHTML = '';
         renderCases();
@@ -103,6 +104,7 @@
     }
 
     function onCaseClick(idx) {
+        ensureAudioCtx(); // unlock audio on first user interaction
         if (stage === 'select') {
             playerCase = idx;
             stage = 'opening';
@@ -193,11 +195,20 @@
         cases[playerCase].opened = true;
         renderCases();
 
+        // Determine if good or bad outcome
+        const isGoodOutcome = isDeal ? (offer >= playerMoney) : (playerMoney >= 50000);
+        const caseBtn = casesGridEl.querySelector(`[data-idx="${playerCase}"]`);
+
         if (isDeal) {
+            const better = offer >= playerMoney;
             statusEl.textContent = `DEAL! You won $${offer.toLocaleString()}! (Your case had ${formatMoney(playerMoney)})`;
+            statusEl.className = better ? 'status-win' : 'status-lose';
         } else {
             statusEl.textContent = `You kept your case #${playerCase + 1} and won ${formatMoney(playerMoney)}!`;
+            statusEl.className = isGoodOutcome ? 'status-win' : 'status-lose';
         }
+
+        if (caseBtn) caseBtn.classList.add(isGoodOutcome ? 'won' : 'lost');
         roundInfoEl.textContent = 'Game over. Press New Game to play again.';
     }
 
@@ -223,8 +234,13 @@
     // --- Phone ring sound (synthesized via Web Audio API) ---
     let audioCtx = null;
 
-    function playRingSound() {
+    function ensureAudioCtx() {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playRingSound() {
+        ensureAudioCtx();
         const ctx = audioCtx;
         const now = ctx.currentTime;
         const ringDuration = 2.0; // 2 seconds

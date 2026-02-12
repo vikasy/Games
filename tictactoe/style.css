@@ -113,6 +113,50 @@ header p {
     50% { transform: scale(1.08); }
 }
 
+.cell.lose {
+    background: #4a2a2a;
+    border-color: #e53935;
+    animation: loseShake 0.4s ease 2;
+}
+
+#board.board-win {
+    animation: boardBounce 0.5s ease 2;
+}
+
+#board.board-lose {
+    animation: boardShake 0.4s ease 2;
+}
+
+#status.status-win { color: #4caf50; animation: statusPop 0.4s ease; }
+#status.status-lose { color: #e53935; animation: statusPop 0.4s ease; }
+#status.status-draw { color: #ff9800; animation: statusPop 0.4s ease; }
+
+@keyframes boardBounce {
+    0%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-6px); }
+    70% { transform: translateY(-2px); }
+}
+
+@keyframes boardShake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-5px); }
+    40% { transform: translateX(5px); }
+    60% { transform: translateX(-3px); }
+    80% { transform: translateX(3px); }
+}
+
+@keyframes statusPop {
+    0% { transform: scale(0.8); opacity: 0.5; }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes loseShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-3px); }
+    75% { transform: translateX(3px); }
+}
+
 .scoreboard {
     display: flex;
     gap: 32px;

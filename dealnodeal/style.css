@@ -232,3 +232,46 @@ a.back:hover { color: #fff; }
 .previous-offers span {
     color: #cc9;
 }
+
+/* Win/loss animations */
+#status.status-win {
+    color: #4caf50;
+    animation: statusPop 0.5s ease;
+}
+
+#status.status-lose {
+    color: #e94560;
+    animation: statusPop 0.5s ease;
+}
+
+.case-btn.player-case.won {
+    animation: caseBounce 0.5s ease 3;
+    box-shadow: 0 0 20px rgba(76,175,80,0.6);
+    border-color: #4caf50;
+}
+
+.case-btn.player-case.lost {
+    animation: caseShake 0.4s ease 2;
+    box-shadow: 0 0 20px rgba(233,69,96,0.5);
+    border-color: #e94560;
+}
+
+@keyframes statusPop {
+    0% { transform: scale(0.8); opacity: 0.5; }
+    50% { transform: scale(1.15); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes caseBounce {
+    0%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-10px); }
+    70% { transform: translateY(-4px); }
+}
+
+@keyframes caseShake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+}
