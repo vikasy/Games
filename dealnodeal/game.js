@@ -127,6 +127,12 @@
             // Mark money value as eliminated
             const moneyIdx = CASE_MONIES.indexOf(cases[idx].money);
             if (moneyIdx >= 0) caseStatus[moneyIdx] = false;
+            // Crowd reaction based on value eliminated
+            const val = cases[idx].money;
+            setTimeout(() => {
+                if (val <= 750) sndClap();        // low value gone = crowd cheers
+                else if (val >= 50000) sndGasp();  // high value gone = crowd gasps
+            }, 150);
             updateAvg();
             renderCases();
             renderMoneyBoard();
@@ -321,6 +327,42 @@
     function sndLose() {
         playTone(300, 0.2, 'sine', 0.08);
         setTimeout(() => playTone(220, 0.3, 'sine', 0.08), 150);
+    }
+
+    // Crowd reaction: soft clap for opening a low-$ case (good for player)
+    function sndClap() {
+        ensureAudioCtx();
+        const ctx = audioCtx;
+        const now = ctx.currentTime;
+        // Simulate 3 quick claps using filtered noise bursts
+        for (let i = 0; i < 3; i++) {
+            const bufferSize = ctx.sampleRate * 0.04;
+            const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let j = 0; j < bufferSize; j++) data[j] = (Math.random() * 2 - 1) * 0.5;
+            const src = ctx.createBufferSource();
+            src.buffer = buffer;
+            const bandpass = ctx.createBiquadFilter();
+            bandpass.type = 'bandpass';
+            bandpass.frequency.value = 2000;
+            bandpass.Q.value = 0.8;
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime(0.12, now + i * 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.1 + 0.04);
+            src.connect(bandpass);
+            bandpass.connect(gain);
+            gain.connect(ctx.destination);
+            src.start(now + i * 0.1);
+        }
+    }
+
+    // Crowd reaction: gasp "ah!" for opening a high-$ case (bad for player)
+    function sndGasp() {
+        // Descending tone cluster to mimic crowd groan/gasp
+        playTone(600, 0.08, 'sine', 0.07);
+        setTimeout(() => playTone(500, 0.1, 'sine', 0.09), 50);
+        setTimeout(() => playTone(380, 0.15, 'sine', 0.1), 120);
+        setTimeout(() => playTone(280, 0.2, 'sine', 0.08), 220);
     }
 
     dealBtnEl.addEventListener('click', onDeal);
