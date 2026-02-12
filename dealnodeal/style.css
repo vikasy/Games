@@ -114,11 +114,11 @@ a.back:hover { color: #fff; }
 }
 
 .case-btn.opened {
-    background: #333;
+    background: #2a2a3a;
     border-color: #555;
-    color: #666;
+    color: #aaa;
     cursor: default;
-    opacity: 0.5;
+    opacity: 0.7;
 }
 
 .case-btn.revealed {

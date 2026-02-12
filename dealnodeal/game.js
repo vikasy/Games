@@ -78,7 +78,7 @@
             } else if (cases[i].opened) {
                 btn.classList.add('opened');
                 btn.textContent = formatMoney(cases[i].money);
-                btn.style.fontSize = '0.6rem';
+                btn.style.fontSize = '0.7rem';
             } else {
                 btn.textContent = i + 1;
             }
