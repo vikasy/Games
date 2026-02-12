@@ -23,6 +23,8 @@
     let handInProgress = false;
     let gameOver = false;
     let topOfDeck = 0;
+    let raisesThisRound = 0;
+    const MAX_RAISES_PER_ROUND = 5;
     let difficulty = 'easy';       // 'easy', 'medium', 'hard'
     let mcSmartPlayer = -1;        // medium mode: which AI uses MC this hand
     const MC_AI_SIMS = 1000;       // simulations for AI Monte Carlo
@@ -171,6 +173,7 @@
     // --- Betting round ---
     function startBettingRound() {
         bettingRoundOver = false;
+        raisesThisRound = 0;
         advanceAction();
     }
 
@@ -247,6 +250,7 @@
     }
 
     function playerRaise(idx, raiseAmount) {
+        raisesThisRound++;
         const p = players[idx];
         const totalBet = currentBet + raiseAmount;
         const toAdd = totalBet - p.currentBet;
@@ -278,6 +282,15 @@
     }
 
     // --- AI betting ---
+    function aiRaiseOrCall(idx, amount) {
+        if (raisesThisRound >= MAX_RAISES_PER_ROUND) {
+            const toCall = currentBet - players[idx].currentBet;
+            if (toCall > 0) playerCall(idx); else playerCheck(idx);
+        } else {
+            playerRaise(idx, amount);
+        }
+    }
+
     function aiAct(idx) {
         const useMC = (difficulty === 'hard') || (difficulty === 'medium' && idx === mcSmartPlayer);
         if (useMC) {
@@ -296,10 +309,10 @@
             const score = scoreHoleCards(p.hole);
             if (toCall > 0) {
                 if (score < 3) { playerFold(idx); return; }
-                if (score >= 7) { playerRaise(idx, BIG_BLIND * Math.ceil(score / 3)); return; }
+                if (score >= 7) { aiRaiseOrCall(idx, BIG_BLIND * Math.ceil(score / 3)); return; }
                 playerCall(idx);
             } else {
-                if (score >= 7) { playerRaise(idx, BIG_BLIND * 2); return; }
+                if (score >= 7) { aiRaiseOrCall(idx, BIG_BLIND * 2); return; }
                 playerCheck(idx);
             }
         } else {
@@ -315,11 +328,11 @@
             if (toCall > 0) {
                 if (handVal >= 9 && Math.random() < 0.6) { playerFold(idx); return; }
                 if (handVal >= 8 && Math.random() < 0.3) { playerFold(idx); return; }
-                if (handVal <= 5) { playerRaise(idx, BIG_BLIND * (6 - handVal)); return; }
+                if (handVal <= 5) { aiRaiseOrCall(idx, BIG_BLIND * (6 - handVal)); return; }
                 playerCall(idx);
             } else {
-                if (handVal <= 5) { playerRaise(idx, BIG_BLIND * (6 - handVal)); return; }
-                if (handVal <= 7 && Math.random() < 0.3) { playerRaise(idx, BIG_BLIND); return; }
+                if (handVal <= 5) { aiRaiseOrCall(idx, BIG_BLIND * (6 - handVal)); return; }
+                if (handVal <= 7 && Math.random() < 0.3) { aiRaiseOrCall(idx, BIG_BLIND); return; }
                 playerCheck(idx);
             }
         }
@@ -334,15 +347,15 @@
 
         if (toCall === 0) {
             // No bet to match
-            if (winPct >= 0.80) { playerRaise(idx, BIG_BLIND * 4); return; }
-            if (winPct >= 0.65) { playerRaise(idx, BIG_BLIND * 2); return; }
-            if (winPct >= 0.45 && Math.random() < 0.3) { playerRaise(idx, BIG_BLIND); return; }
+            if (winPct >= 0.80) { aiRaiseOrCall(idx, BIG_BLIND * 4); return; }
+            if (winPct >= 0.65) { aiRaiseOrCall(idx, BIG_BLIND * 2); return; }
+            if (winPct >= 0.45 && Math.random() < 0.3) { aiRaiseOrCall(idx, BIG_BLIND); return; }
             playerCheck(idx);
         } else {
             // Must call or fold
             if (winPct < potOdds * 0.85) { playerFold(idx); return; }
-            if (winPct >= 0.80) { playerRaise(idx, BIG_BLIND * 4); return; }
-            if (winPct >= 0.65) { playerRaise(idx, BIG_BLIND * 2); return; }
+            if (winPct >= 0.80) { aiRaiseOrCall(idx, BIG_BLIND * 4); return; }
+            if (winPct >= 0.65) { aiRaiseOrCall(idx, BIG_BLIND * 2); return; }
             playerCall(idx);
         }
     }
@@ -562,12 +575,16 @@
         raiseInput.max = p.chips - (toCall > 0 ? toCall : 0);
         raiseInput.value = BIG_BLIND;
 
-        // Disable raise if can't afford it
-        const canRaise = p.chips > toCall;
+        // Disable raise if can't afford it or raise cap reached
+        const canRaise = p.chips > toCall && raisesThisRound < MAX_RAISES_PER_ROUND;
         raiseBtn.disabled = !canRaise;
         raiseInput.disabled = !canRaise;
 
-        statusEl.textContent = 'Your turn.';
+        if (raisesThisRound >= MAX_RAISES_PER_ROUND) {
+            statusEl.textContent = `Your turn. (Raise cap reached — ${MAX_RAISES_PER_ROUND} raises this round)`;
+        } else {
+            statusEl.textContent = 'Your turn.';
+        }
     }
 
     function hideActions() {
