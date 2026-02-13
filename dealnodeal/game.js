@@ -204,6 +204,9 @@
         sndBigReveal();
         cases[playerCase].opened = true;
         renderCases();
+        const moneyIdx = CASE_MONIES.indexOf(playerMoney);
+        if (moneyIdx >= 0) caseStatus[moneyIdx] = false;
+        renderMoneyBoard();
 
         // Determine if good or bad outcome
         const isGoodOutcome = isDeal ? (offer >= playerMoney) : (playerMoney >= 50000);

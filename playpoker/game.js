@@ -28,6 +28,7 @@
     let difficulty = 'easy';       // 'easy', 'medium', 'hard'
     let mcSmartPlayer = -1;        // medium mode: which AI uses MC this hand
     const MC_AI_SIMS = 1000;       // simulations for AI Monte Carlo
+    let lastHandWinners = [];
 
     const tableEl = document.querySelector('.table');
     const communityCardsEl = document.getElementById('community-cards');
@@ -48,7 +49,7 @@
         players = PLAYER_NAMES.map((name, i) => ({
             name, hole: [], rank: null, rankVal: 10, best5: [],
             chips: STARTING_CHIPS, currentBet: 0, folded: false, allIn: false,
-            isDealer: false, busted: false
+            isDealer: false, busted: false, totalContribution: 0
         }));
         gameOver = false;
         statusEl.textContent = 'Press Deal to start a new hand.';
@@ -96,6 +97,7 @@
             p.folded = false;
             p.allIn = false;
             p.isDealer = (i === dealerIdx);
+            p.totalContribution = 0;
         });
 
         // Deal 2 hole cards to active (non-busted) players
@@ -104,6 +106,7 @@
                 if (!players[i].busted) players[i].hole.push(dealCard());
 
         handInProgress = true;
+        lastHandWinners = [];
         dealBtn.style.display = 'none';
         stage = 0; // pre-flop
         markAllUnacted();
@@ -125,9 +128,9 @@
         // Post blinds
         const sbIdx = nextActivePlayer(dealerIdx);
         const bbIdx = nextActivePlayer(sbIdx);
-        postBlind(sbIdx, SMALL_BLIND);
-        postBlind(bbIdx, BIG_BLIND);
-        currentBet = BIG_BLIND;
+        const sbAmount = postBlind(sbIdx, SMALL_BLIND);
+        const bbAmount = postBlind(bbIdx, BIG_BLIND);
+        currentBet = Math.max(sbAmount, bbAmount);
 
         difficultySelect.disabled = true;
         statusEl.textContent = 'Pre-flop betting.';
@@ -143,8 +146,10 @@
         const actual = Math.min(amount, p.chips);
         p.chips -= actual;
         p.currentBet = actual;
+        p.totalContribution += actual;
         pot += actual;
         if (p.chips === 0) p.allIn = true;
+        return actual;
     }
 
     // --- Active player helpers ---
@@ -241,6 +246,7 @@
         const actual = Math.min(toCall, p.chips);
         p.chips -= actual;
         p.currentBet += actual;
+        p.totalContribution += actual;
         pot += actual;
         if (p.chips === 0) p.allIn = true;
         p._actedThisRound = true;
@@ -250,18 +256,32 @@
     }
 
     function playerRaise(idx, raiseAmount) {
-        raisesThisRound++;
         const p = players[idx];
-        const totalBet = currentBet + raiseAmount;
-        const toAdd = totalBet - p.currentBet;
-        const actual = Math.min(toAdd, p.chips);
-        p.chips -= actual;
-        p.currentBet += actual;
-        pot += actual;
-        currentBet = p.currentBet;
+        const toCall = currentBet - p.currentBet;
+        if (p.chips <= toCall) {
+            playerCall(idx);
+            return;
+        }
+
+        const desired = Math.max(BIG_BLIND, raiseAmount);
+        const maxRaise = p.chips - toCall;
+        const actualRaise = Math.min(desired, maxRaise);
+        if (actualRaise <= 0) {
+            playerCall(idx);
+            return;
+        }
+
+        const targetBet = currentBet + actualRaise;
+        const toAdd = targetBet - p.currentBet;
+        p.chips -= toAdd;
+        p.currentBet = targetBet;
+        p.totalContribution += toAdd;
+        pot += toAdd;
         if (p.chips === 0) p.allIn = true;
         p._actedThisRound = true;
-        // Everyone else needs to act again
+        currentBet = Math.max(currentBet, p.currentBet);
+        raisesThisRound++;
+
         players.forEach((other, i) => {
             if (i !== idx && !other.folded && !other.busted && !other.allIn) {
                 other._actedThisRound = false;
@@ -342,7 +362,8 @@
     function aiActMonteCarlo(idx) {
         const p = players[idx];
         const toCall = currentBet - p.currentBet;
-        const winPct = monteCarloWinPctFor(p.hole, communityCards, MC_AI_SIMS);
+        const opponents = players.filter((player, i) => i !== idx && !player.busted && !player.folded).length;
+        const winPct = monteCarloWinPctFor(p.hole, communityCards, MC_AI_SIMS, opponents);
         const potOdds = toCall > 0 ? toCall / (pot + toCall) : 0;
 
         if (toCall === 0) {
@@ -361,10 +382,11 @@
     }
 
     // MC sim with configurable simulation count (used by AI)
-    function monteCarloWinPctFor(hole, community, numSims) {
+    function monteCarloWinPctFor(hole, community, numSims, numOpponents = NUM_PLAYERS - 1) {
         const numCommunity = community.length;
         const cardsToComplete = 5 - numCommunity;
-        const cardsNeeded = cardsToComplete + 2 * (NUM_PLAYERS - 1);
+        const opponents = Math.max(0, numOpponents);
+        const cardsNeeded = cardsToComplete + 2 * opponents;
 
         const used = new Set();
         hole.forEach(c => used.add(c.face * 4 + SUITS.indexOf(c.suit)));
@@ -391,7 +413,7 @@
             const playerRank = bestRankOf(playerAll);
 
             let playerWins = true, isTie = false;
-            for (let opp = 0; opp < NUM_PLAYERS - 1; opp++) {
+            for (let opp = 0; opp < opponents; opp++) {
                 const base = cardsToComplete + opp * 2;
                 const oppAll = [remaining[base], remaining[base + 1], ...fullComm];
                 const oppRank = bestRankOf(oppAll);
@@ -480,17 +502,52 @@
         const inHand = playersStillInHand();
         inHand.forEach(p => evaluateHand(p));
 
-        const winnerIdxs = decideWinnerFromActive();
-        const winAmount = Math.floor(pot / winnerIdxs.length);
-        winnerIdxs.forEach(i => { players[i].chips += winAmount; });
+        const sidePots = buildSidePots();
+        const winnings = new Map();
+        const summaries = [];
 
-        // Remainder goes to first winner
-        const remainder = pot - winAmount * winnerIdxs.length;
-        if (remainder > 0) players[winnerIdxs[0]].chips += remainder;
+        const awardPot = (potAmount, potWinners, label) => {
+            if (!potWinners.length) return;
+            const share = Math.floor(potAmount / potWinners.length);
+            potWinners.forEach(idx => {
+                players[idx].chips += share;
+                winnings.set(idx, (winnings.get(idx) || 0) + share);
+            });
+            const remainder = potAmount - share * potWinners.length;
+            if (remainder > 0) {
+                players[potWinners[0]].chips += remainder;
+                winnings.set(potWinners[0], (winnings.get(potWinners[0]) || 0) + remainder);
+            }
+            summaries.push(label);
+        };
 
-        const winnerNames = winnerIdxs.map(i => players[i].name).join(' & ');
-        statusEl.textContent = `${winnerNames} wins $${pot} with ${RANK_NAMES[players[winnerIdxs[0]].rankVal]}!`;
+        if (sidePots.length === 0) {
+            const eligible = [];
+            players.forEach((p, idx) => {
+                if (!p.folded && !p.busted) eligible.push(idx);
+            });
+            const winners = determinePotWinners(eligible);
+            if (winners.length) {
+                const label = `${winners.map(i => players[i].name).join(' & ')} wins $${pot} with ${RANK_NAMES[players[winners[0]].rankVal]}`;
+                awardPot(pot, winners, label);
+            }
+        } else {
+            sidePots.forEach((potInfo, idx) => {
+                const winners = determinePotWinners(potInfo.eligible);
+                if (winners.length) {
+                    const label = idx === 0
+                        ? `${winners.map(i => players[i].name).join(' & ')} wins $${potInfo.amount} with ${RANK_NAMES[players[winners[0]].rankVal]}`
+                        : `Side pot ${idx}: ${winners.map(i => players[i].name).join(' & ')} wins $${potInfo.amount}`;
+                    awardPot(potInfo.amount, winners, label);
+                }
+            });
+        }
+
         pot = 0;
+        statusEl.textContent = summaries.length
+            ? summaries.join('. ') + '.'
+            : 'Showdown complete.';
+        lastHandWinners = Array.from(winnings.keys());
         endHand();
     }
 
@@ -500,6 +557,7 @@
         statusEl.textContent = `${winner.name} wins $${pot} — everyone else folded!`;
         pot = 0;
         stage = 4; // so cards are revealed
+        lastHandWinners = [idx];
         endHand();
     }
 
@@ -533,7 +591,7 @@
         if (stage === 4) {
             requestAnimationFrame(() => {
                 const boxes = playersEl.querySelectorAll('.player-box');
-                const winnerIdxs = decideWinnerFromActive();
+                const winnerIdxs = lastHandWinners.length ? lastHandWinners : decideWinnerFromActive();
                 const humanWon = winnerIdxs.includes(0);
                 const humanLost = !humanWon && !players[0].folded;
                 if (humanWon) sndWin(); else if (humanLost) sndLose();
@@ -729,6 +787,46 @@
         return 0;
     }
 
+    function determinePotWinners(eligibleIdxs) {
+        if (!eligibleIdxs.length) return [];
+        let best = [eligibleIdxs[0]];
+        for (let i = 1; i < eligibleIdxs.length; i++) {
+            const idx = eligibleIdxs[i];
+            const cmp = comparePlayers(idx, best[0]);
+            if (cmp > 0) best = [idx];
+            else if (cmp === 0) best.push(idx);
+        }
+        return best;
+    }
+
+    function buildSidePots() {
+        const contributions = players
+            .map((p, idx) => ({ idx, amount: p.totalContribution }))
+            .filter(entry => entry.amount > 0);
+        if (!contributions.length) return [];
+        contributions.sort((a, b) => a.amount - b.amount);
+        const pots = [];
+        let prev = 0;
+        for (let i = 0; i < contributions.length; i++) {
+            const contrib = contributions[i].amount;
+            const chunk = contrib - prev;
+            const remaining = contributions.length - i;
+            if (chunk > 0 && remaining > 0) {
+                const eligible = contributions
+                    .slice(i)
+                    .map(entry => entry.idx)
+                    .filter(idx => !players[idx].folded && !players[idx].busted);
+                if (eligible.length > 0) {
+                    pots.push({ amount: chunk * remaining, eligible });
+                }
+                prev = contrib;
+            } else {
+                prev = contrib;
+            }
+        }
+        return pots;
+    }
+
     // --- Rendering ---
     function renderAll() {
         renderCommunity();
@@ -749,7 +847,9 @@
 
     function renderPlayers() {
         playersEl.innerHTML = '';
-        const winnerIdxs = stage === 4 ? decideWinnerFromActive() : [];
+        const winnerIdxs = stage === 4
+            ? (lastHandWinners.length ? lastHandWinners : decideWinnerFromActive())
+            : [];
         players.forEach((p, i) => {
             const box = document.createElement('div');
             let cls = 'player-box';
@@ -845,7 +945,8 @@
     const MC_SIMS = 2000; // simulations for human's "My Hand" button
 
     function monteCarloWinPct(hole, community) {
-        return monteCarloWinPctFor(hole, community, MC_SIMS);
+        const opponents = players.filter((p, i) => i !== 0 && !p.busted && !p.folded).length;
+        return monteCarloWinPctFor(hole, community, MC_SIMS, opponents);
     }
 
     function bestRankOf(cards) {
