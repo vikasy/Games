@@ -15,6 +15,7 @@
 
     const NUM_PLAYERS = 4;
     const PLAYER_NAMES = ['You', 'Alice', 'Bob', 'Charlie'];
+    const PLAYER_AVATARS = ['🦊', '🦁', '🐼', '🦉'];
     const STARTING_CHIPS = 1000;
     const SMALL_BLIND = 10;
     const BIG_BLIND = 20;
@@ -32,12 +33,16 @@
     const MC_AI_SIMS = 1000;       // simulations for AI Monte Carlo
     let lastHandWinners = [];
     let lastTieBreakNotes = [];
+    let handCounter = 0;
+let handHistory = [];
+let hasStartedHand = false;
 
     const tableEl = document.querySelector('.table');
     const communityCardsEl = document.getElementById('community-cards');
     const playersEl = document.getElementById('players');
     const statusEl = document.getElementById('status');
     const potEl = document.getElementById('pot-display');
+    const potBreakdownEl = document.getElementById('pot-breakdown');
     const tieBreakEl = document.getElementById('tie-break-info');
     const dealBtn = document.getElementById('deal-btn');
     const actionsEl = document.getElementById('actions');
@@ -53,8 +58,13 @@
     const rankingsTabButtons = document.querySelectorAll('.rankings-tab-btn');
     const rankingTabPanels = {
         hand: document.getElementById('rankings-tab-hand'),
-        tie: document.getElementById('rankings-tab-tie')
+        tie: document.getElementById('rankings-tab-tie'),
+        terms: document.getElementById('rankings-tab-terms'),
+        math: document.getElementById('rankings-tab-math')
     };
+    const handHistoryEl = document.getElementById('hand-history');
+    const gameRulesEl = document.getElementById('game-rules');
+    const infoPanelTitleEl = document.getElementById('info-panel-title');
 
     function faceWord(val) {
         return FACE_WORDS[val] || FACE_NAMES[val] || String(val);
@@ -76,9 +86,8 @@
     }
 
     function activateRankingTab(tab) {
-        const panels = Object.values(rankingTabPanels).filter(Boolean);
-        if (!panels.length) return;
-        Array.from(rankingsTabButtons).forEach(btn => {
+        if (!rankingsTabButtons.length) return;
+        rankingsTabButtons.forEach(btn => {
             btn.classList.toggle('active', btn.dataset.tab === tab);
         });
         Object.keys(rankingTabPanels).forEach(key => {
@@ -87,8 +96,24 @@
         });
     }
 
-    if (Object.values(rankingTabPanels).some(Boolean)) {
-        activateRankingTab('hand');
+    if (rankingTabPanels.hand) activateRankingTab('hand');
+
+    function updateInfoPanel() {
+        if (!infoPanelTitleEl || !handHistoryEl || !gameRulesEl) return;
+        if (!hasStartedHand) {
+            infoPanelTitleEl.textContent = 'Game Rules';
+            gameRulesEl.style.display = 'block';
+            handHistoryEl.style.display = 'none';
+        } else {
+            infoPanelTitleEl.textContent = 'Hand History';
+            gameRulesEl.style.display = 'none';
+            handHistoryEl.style.display = '';
+            if (!handHistory.length) handHistoryEl.textContent = 'No completed hands yet.';
+        }
+    }
+
+    function updateLandingState() {
+        tableEl.classList.toggle('landing', !hasStartedHand);
     }
 
     // --- Initialization ---
@@ -101,13 +126,19 @@
         }));
         gameOver = false;
         lastTieBreakNotes = [];
+        handHistory = [];
+        handCounter = 0;
         setTieBreakInfo('');
-        statusEl.textContent = 'Press Deal to start a new hand.';
+        statusEl.textContent = '';
         dealBtn.style.display = '';
         dealBtn.disabled = false;
         hideActions();
         pot = 0;
         renderAll();
+        renderHandHistory();
+        hasStartedHand = false;
+        updateLandingState();
+        updateInfoPanel();
     }
 
     function shuffleDeck() {
@@ -126,6 +157,10 @@
         sndDeal();
         lastTieBreakNotes = [];
         setTieBreakInfo('');
+        handCounter++;
+        hasStartedHand = true;
+        updateLandingState();
+        updateInfoPanel();
 
         deck = [];
         for (let s = 0; s < 4; s++)
@@ -601,8 +636,10 @@
             ? summaries.join('. ') + '.'
             : 'Showdown complete.';
         lastHandWinners = Array.from(winnings.keys());
-        lastTieBreakNotes = tieBreakNotes.slice();
-        setTieBreakInfo(tieBreakNotes.length ? tieBreakNotes.join(' ') : '');
+        const uniqueNotes = Array.from(new Set(tieBreakNotes.filter(Boolean)));
+        lastTieBreakNotes = uniqueNotes;
+        setTieBreakInfo(uniqueNotes.length ? uniqueNotes.join(' ') : '');
+        recordHandSummary(statusEl.textContent);
         endHand();
     }
 
@@ -615,6 +652,7 @@
         lastHandWinners = [idx];
         lastTieBreakNotes = [];
         setTieBreakInfo('');
+        recordHandSummary(statusEl.textContent);
         endHand();
     }
 
@@ -679,9 +717,13 @@
         const toCall = currentBet - p.currentBet;
 
         actionsEl.style.display = 'flex';
+        actionsEl.classList.remove('waiting');
 
-        const canCheck = toCall === 0 && !p.allIn && !p.folded;
-        const canCall = toCall > 0 && !p.allIn && !p.folded && p.chips > 0;
+        const canFold = handInProgress && !p.folded && !p.busted && !p.allIn;
+        const canCheck = handInProgress && toCall === 0 && !p.allIn && !p.folded;
+        const canCall = handInProgress && toCall > 0 && !p.allIn && !p.folded && p.chips > 0;
+
+        if (foldBtn) foldBtn.disabled = !canFold;
 
         if (checkBtn) {
             checkBtn.disabled = !canCheck;
@@ -696,7 +738,7 @@
         raiseInput.value = BIG_BLIND;
 
         // Disable raise if can't afford it or raise cap reached
-        const canRaise = p.chips > toCall && raisesThisRound < MAX_RAISES_PER_ROUND;
+        const canRaise = handInProgress && p.chips > toCall && raisesThisRound < MAX_RAISES_PER_ROUND && !p.allIn && !p.folded;
         raiseBtn.disabled = !canRaise;
         raiseInput.disabled = !canRaise;
 
@@ -708,7 +750,13 @@
     }
 
     function hideActions() {
-        actionsEl.style.display = 'none';
+        actionsEl.style.display = 'flex';
+        actionsEl.classList.add('waiting');
+        if (foldBtn) foldBtn.disabled = true;
+        if (checkBtn) checkBtn.disabled = true;
+        if (callBtn) callBtn.disabled = true;
+        raiseBtn.disabled = true;
+        raiseInput.disabled = true;
     }
 
     function onFold() {
@@ -1072,6 +1120,13 @@
 
     function renderCommunity() {
         communityCardsEl.innerHTML = '';
+        if (!hasStartedHand) {
+            const hero = document.createElement('div');
+            hero.className = 'community-hero';
+            hero.innerHTML = '<div class="hero-icon">♠️ ♥️ ♣️ ♦️</div><p>Press Deal to shuffle &amp; start a hand.</p>';
+            communityCardsEl.appendChild(hero);
+            return;
+        }
         for (let i = 0; i < 5; i++) {
             if (i < communityCards.length) {
                 communityCardsEl.appendChild(createCardEl(communityCards[i], false));
@@ -1120,6 +1175,11 @@
             }
             box.appendChild(chipsEl);
 
+            const contribEl = document.createElement('div');
+            contribEl.className = 'contrib';
+            contribEl.textContent = `In pot: $${p.totalContribution}`;
+            box.appendChild(contribEl);
+
             // Cards
             const cardsRow = document.createElement('div');
             cardsRow.className = 'cards';
@@ -1132,12 +1192,15 @@
             box.appendChild(cardsRow);
 
             // Current bet indicator
+            const betEl = document.createElement('div');
+            betEl.className = 'current-bet';
             if (handInProgress && p.currentBet > 0 && !p.folded) {
-                const betEl = document.createElement('div');
-                betEl.className = 'current-bet';
                 betEl.textContent = `Bet: $${p.currentBet}`;
-                box.appendChild(betEl);
+            } else {
+                betEl.textContent = 'Bet: $0';
+                betEl.classList.add('bet-idle');
             }
+            box.appendChild(betEl);
 
             // Rank label at showdown
             const rankEl = document.createElement('div');
@@ -1150,12 +1213,99 @@
             }
             box.appendChild(rankEl);
 
+            const avatar = document.createElement('div');
+            avatar.className = 'player-avatar';
+            avatar.textContent = PLAYER_AVATARS[i % PLAYER_AVATARS.length] || '🃏';
+            box.appendChild(avatar);
+
             playersEl.appendChild(box);
         });
     }
 
     function renderPot() {
-        potEl.textContent = pot > 0 ? `Pot: $${pot}` : '';
+        potEl.textContent = `Pot: $${pot}`;
+        renderPotBreakdown();
+    }
+
+    function renderPotBreakdown() {
+        if (!potBreakdownEl) return;
+        const structures = buildSidePots();
+        if (!structures.length) {
+            potBreakdownEl.textContent = 'No bets yet.';
+            return;
+        }
+        const unique = [];
+        const seen = new Set();
+        structures.forEach((entry, idx) => {
+            const key = `${entry.amount}|${entry.eligible.join(',')}`;
+            if (seen.has(key)) return;
+            seen.add(key);
+            unique.push({ ...entry, order: idx });
+        });
+        potBreakdownEl.innerHTML = '';
+        unique.forEach(entry => {
+            const div = document.createElement('div');
+            div.className = 'pot-entry';
+            const frozen = entry.eligible.every(i => players[i].allIn);
+            const status = frozen ? 'Locked' : 'Building';
+            const label = entry.order === 0 ? 'Main Pot' : `Side Pot ${entry.order}`;
+            div.textContent = `${label}: $${entry.amount} — ${status}`;
+            const eligibleNames = entry.eligible.map(i => players[i].name).join(', ') || 'None';
+            const span = document.createElement('span');
+            span.textContent = `Eligible: ${eligibleNames}`;
+            div.appendChild(span);
+            potBreakdownEl.appendChild(div);
+        });
+    }
+
+    function recordHandSummary(desc) {
+        if (!handCounter) return;
+        const snapshot = players.map((p, idx) => ({
+            name: p.name,
+            invested: p.totalContribution,
+            outcome: lastHandWinners.includes(idx)
+                ? 'Won'
+                : (p.folded ? 'Folded' : 'Lost')
+        }));
+        handHistory.unshift({
+            hand: handCounter,
+            desc,
+            players: snapshot
+        });
+        if (handHistory.length > 10) handHistory.pop();
+        renderHandHistory();
+    }
+
+    function renderHandHistory() {
+        if (!handHistoryEl) return;
+        if (!handHistory.length) {
+            handHistoryEl.textContent = 'No completed hands yet.';
+            updateInfoPanel();
+            return;
+        }
+        handHistoryEl.innerHTML = '';
+        handHistory.forEach(entry => {
+            const div = document.createElement('div');
+            div.className = 'hand-history-entry';
+            const header = document.createElement('div');
+            header.className = 'hand-header';
+            header.textContent = `Hand ${entry.hand}`;
+            const desc = document.createElement('div');
+            desc.className = 'hand-desc';
+            desc.textContent = entry.desc;
+            const playersWrap = document.createElement('div');
+            playersWrap.className = 'hand-players';
+            entry.players.forEach(p => {
+                const span = document.createElement('span');
+                span.textContent = `${p.name}: $${p.invested} (${p.outcome})`;
+                playersWrap.appendChild(span);
+            });
+            div.appendChild(header);
+            div.appendChild(desc);
+            div.appendChild(playersWrap);
+            handHistoryEl.appendChild(div);
+        });
+        updateInfoPanel();
     }
 
     function createCardEl(card, hidden) {
@@ -1228,7 +1378,21 @@
     // --- My Hand evaluation ---
     const myHandBtn = document.getElementById('my-hand-btn');
     const handTooltip = document.getElementById('hand-tooltip');
+    let handTooltipBody = null;
     let tooltipTimeout = null;
+
+    if (handTooltip) {
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'hand-tooltip-close';
+        closeBtn.type = 'button';
+        closeBtn.innerHTML = '&times;';
+        closeBtn.addEventListener('click', () => hideTooltip());
+        handTooltip.appendChild(closeBtn);
+
+        handTooltipBody = document.createElement('div');
+        handTooltipBody.className = 'hand-tooltip-body';
+        handTooltip.appendChild(handTooltipBody);
+    }
 
     function showMyHand() {
         const p = players[0];
@@ -1318,10 +1482,17 @@
     }
 
     function showTooltip(text) {
-        handTooltip.textContent = text;
+        if (!handTooltip || !handTooltipBody) return;
+        handTooltipBody.textContent = text;
         handTooltip.style.display = 'block';
         clearTimeout(tooltipTimeout);
-        tooltipTimeout = setTimeout(() => { handTooltip.style.display = 'none'; }, 5000);
+        tooltipTimeout = setTimeout(() => hideTooltip(), 5000);
+    }
+
+    function hideTooltip() {
+        if (!handTooltip) return;
+        handTooltip.style.display = 'none';
+        clearTimeout(tooltipTimeout);
     }
 
     function toggleRankings() {
@@ -1338,6 +1509,13 @@
     Array.from(rankingsTabButtons).forEach(btn => {
         btn.addEventListener('click', () => activateRankingTab(btn.dataset.tab || 'hand'));
     });
+
+    document.addEventListener('click', (e) => {
+        if (!handTooltip || handTooltip.style.display !== 'block') return;
+        if (handTooltip.contains(e.target) || (myHandBtn && myHandBtn.contains(e.target))) return;
+        hideTooltip();
+    });
+
 
     // --- Sound effects (Web Audio API) ---
     let audioCtx = null;

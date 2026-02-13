@@ -13,12 +13,16 @@
         <p>You vs 3 Opponents &mdash; Blinds $10/$20</p>
     </header>
 
+
     <div class="table">
         <div class="community">
             <h3>Community Cards</h3>
             <div class="cards" id="community-cards"></div>
         </div>
-        <div id="pot-display" class="pot-display"></div>
+        <div class="pot-info">
+            <div id="pot-display" class="pot-display"></div>
+            <div id="pot-breakdown" class="pot-breakdown"></div>
+        </div>
         <div class="players" id="players"></div>
     </div>
 
@@ -26,6 +30,7 @@
     <div id="tie-break-info" class="tie-break-info" style="display:none;"></div>
 
     <div class="controls">
+        <button id="my-hand-btn" class="side-btn" title="Evaluate your hand">My Hand</button>
         <div class="difficulty-group">
             <label for="difficulty-select">Difficulty:</label>
             <select id="difficulty-select">
@@ -35,9 +40,11 @@
             </select>
         </div>
         <button id="deal-btn">Deal</button>
+        <button id="rankings-btn" class="side-btn" title="Hand rankings reference">?</button>
+        <div id="hand-tooltip" class="hand-tooltip" style="display:none"></div>
     </div>
 
-    <div class="actions" id="actions" style="display:none">
+    <div class="actions" id="actions">
         <button id="fold-btn" class="action-btn fold">Fold</button>
         <button id="check-btn" class="action-btn call">Check</button>
         <button id="call-btn" class="action-btn call">Call</button>
@@ -47,20 +54,32 @@
         </div>
     </div>
 
-    <div class="side-buttons">
-        <button id="my-hand-btn" class="side-btn" title="Evaluate your hand">My Hand</button>
-        <button id="rankings-btn" class="side-btn" title="Hand rankings reference">?</button>
+    <div class="hand-history-panel" id="info-panel">
+        <h3 id="info-panel-title">Hand History</h3>
+        <div id="hand-history"></div>
+        <div id="game-rules" style="display:none">
+        <p>Welcome to Texas Hold'em! Here's how to play:</p>
+            <ol>
+                <li><strong>Pick your difficulty</strong> and press <strong>Deal</strong>.</li>
+                <li>You get 2 secret cards. Decide to <em>check</em>, <em>call</em>, <em>raise</em>, or <em>fold</em>.</li>
+                <li>Watch the shared cards (flop, turn, river) appear on the table.</li>
+                <li>Make the best 5-card hand using your 2 cards + the shared cards.</li>
+                <li>If you have the strongest hand (or everyone else folds), you win the pot!</li>
+            </ol>
+            <p>Have fun, be brave with your chips, and remember: folding is okay! 😄</p>
+            <p>Need more tips? Tap the <strong>?</strong> button for hand ranks, tie breakers, terms, and math magic!</p>
+        </div>
     </div>
-
-    <div id="hand-tooltip" class="hand-tooltip" style="display:none"></div>
 
     <div id="rankings-overlay" class="rankings-overlay" style="display:none">
         <div class="rankings-modal">
             <button id="rankings-close" class="rankings-close">&times;</button>
             <h2>Poker Reference</h2>
             <div class="rankings-tabs">
-                <button class="tab-btn rankings-tab-btn active" data-tab="hand">Hand Rankings</button>
-                <button class="tab-btn rankings-tab-btn" data-tab="tie">Tie Breakers</button>
+                <button class="rankings-tab-btn active" data-tab="hand">Hand Rankings</button>
+                <button class="rankings-tab-btn" data-tab="tie">Tie Breakers</button>
+                <button class="rankings-tab-btn" data-tab="terms">Terminology</button>
+                <button class="rankings-tab-btn" data-tab="math">Poker Math</button>
             </div>
             <div class="tab-panel active" id="rankings-tab-hand">
                 <p class="rankings-sub">Best to worst</p>
@@ -78,7 +97,7 @@
                 </ol>
             </div>
             <div class="tab-panel" id="rankings-tab-tie">
-                <p class="rankings-sub">Tie-breaking order (after a hand matches)</p>
+                <p class="rankings-sub">How split pots are decided</p>
                 <ul class="tie-break-list">
                     <li><strong>High Card:</strong> Compare the highest card, then the next-highest card, all the way to the 5th.</li>
                     <li><strong>One Pair:</strong> Highest pair wins. If equal, compare kickers from highest to lowest.</li>
@@ -89,6 +108,37 @@
                     <li><strong>Full House:</strong> First compare the three-of-a-kind rank, then the pair.</li>
                     <li><strong>Four of a Kind:</strong> Higher quads win. If tied, compare the kicker.</li>
                     <li><strong>Royal Flush:</strong> Always a tied hand — split the pot.</li>
+                </ul>
+            </div>
+            <div class="tab-panel" id="rankings-tab-terms">
+                <p class="rankings-sub">Key lingo at the table</p>
+                <ul class="terms-list">
+                    <li><strong>Blinds:</strong> Forced bets (Small Blind / Big Blind) posted before cards are dealt.</li>
+                    <li><strong>Hole Cards:</strong> The two private cards dealt to each player.</li>
+                    <li><strong>Flop:</strong> The first three community cards revealed together.</li>
+                    <li><strong>Turn:</strong> The fourth community card (also called Fourth Street).</li>
+                    <li><strong>River:</strong> The fifth and final community card.</li>
+                    <li><strong>Check:</strong> Pass the action without betting (only if no bet is pending).</li>
+                    <li><strong>Call:</strong> Match the current bet to stay in the hand.</li>
+                    <li><strong>Raise:</strong> Increase the current bet amount.</li>
+                    <li><strong>Fold:</strong> Give up your cards and sit out the rest of the hand.</li>
+                    <li><strong>All-in:</strong> Betting all your remaining chips.</li>
+                    <li><strong>Pot:</strong> Total chips wagered that hand; may split into side pots if players are all-in.</li>
+                    <li><strong>Side Pot:</strong> Extra pot created when one or more players are all-in and others continue betting.</li>
+                    <li><strong>Kicker:</strong> Unpaired high card used to break ties.</li>
+                    <li><strong>Showdown:</strong> Revealing remaining hands when betting ends to decide the winner(s).</li>
+                </ul>
+            </div>
+            <div class="tab-panel" id="rankings-tab-math">
+                <p class="rankings-sub">Quick odds &amp; math tips</p>
+                <ul class="math-list">
+                    <li><strong>Rule of 2 &amp; 4:</strong> Multiply your outs by 2 (turn) or 4 (flop) to estimate draw odds.</li>
+                    <li><strong>Pot Odds:</strong> Call if your win % &gt; chips-to-call / (pot + chips-to-call).</li>
+                    <li><strong>Outs:</strong> Cards left in the deck that complete your hand. 9 outs ≈ flush draw.</li>
+                    <li><strong>Equity:</strong> Your share of the pot if all cards were dealt out (e.g., 60% equity = expect 60% of the pot).</li>
+                    <li><strong>Implied Odds:</strong> Factor in chips you expect to win later when draws hit.</li>
+                    <li><strong>Bluff Frequency:</strong> In theory, bluff roughly 1/3 of the time heads-up when you bet pot-sized.</li>
+                    <li><strong>Bet Sizing:</strong> C-bets (⅓–½ pot) pressure air; larger bets polarize (nuts or bluffs).</li>
                 </ul>
             </div>
         </div>
