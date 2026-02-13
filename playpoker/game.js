@@ -42,7 +42,8 @@
     const dealBtn = document.getElementById('deal-btn');
     const actionsEl = document.getElementById('actions');
     const foldBtn = document.getElementById('fold-btn');
-    const checkCallBtn = document.getElementById('check-call-btn');
+    const checkBtn = document.getElementById('check-btn');
+    const callBtn = document.getElementById('call-btn');
     const raiseBtn = document.getElementById('raise-btn');
     const raiseInput = document.getElementById('raise-amount');
     const difficultySelect = document.getElementById('difficulty-select');
@@ -679,10 +680,15 @@
 
         actionsEl.style.display = 'flex';
 
-        if (toCall > 0) {
-            checkCallBtn.textContent = `Call $${Math.min(toCall, p.chips)}`;
-        } else {
-            checkCallBtn.textContent = 'Check';
+        const canCheck = toCall === 0 && !p.allIn && !p.folded;
+        const canCall = toCall > 0 && !p.allIn && !p.folded && p.chips > 0;
+
+        if (checkBtn) {
+            checkBtn.disabled = !canCheck;
+        }
+        if (callBtn) {
+            callBtn.disabled = !canCall;
+            callBtn.textContent = toCall > 0 ? `Call $${Math.min(toCall, p.chips)}` : 'Call';
         }
 
         raiseInput.min = BIG_BLIND;
@@ -710,14 +716,17 @@
         playerFold(0);
     }
 
-    function onCheckCall() {
+    function onCheck() {
+        if (currentBet - players[0].currentBet > 0 || players[0].allIn) return;
         hideActions();
+        playerCheck(0);
+    }
+
+    function onCall() {
         const toCall = currentBet - players[0].currentBet;
-        if (toCall > 0) {
-            playerCall(0);
-        } else {
-            playerCheck(0);
-        }
+        if (toCall <= 0 || players[0].allIn) return;
+        hideActions();
+        playerCall(0);
     }
 
     function onRaise() {
@@ -1371,7 +1380,8 @@
     // --- Event listeners ---
     dealBtn.addEventListener('click', dealNewHand);
     foldBtn.addEventListener('click', onFold);
-    checkCallBtn.addEventListener('click', onCheckCall);
+    checkBtn.addEventListener('click', onCheck);
+    callBtn.addEventListener('click', onCall);
     raiseBtn.addEventListener('click', onRaise);
     myHandBtn.addEventListener('click', showMyHand);
     if (rankingsBtn) rankingsBtn.addEventListener('click', toggleRankings);
