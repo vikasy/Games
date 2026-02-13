@@ -46,6 +46,14 @@
     const raiseBtn = document.getElementById('raise-btn');
     const raiseInput = document.getElementById('raise-amount');
     const difficultySelect = document.getElementById('difficulty-select');
+    const rankingsBtn = document.getElementById('rankings-btn');
+    const rankingsOverlay = document.getElementById('rankings-overlay');
+    const rankingsClose = document.getElementById('rankings-close');
+    const rankingsTabButtons = document.querySelectorAll('.rankings-tab-btn');
+    const rankingTabPanels = {
+        hand: document.getElementById('rankings-tab-hand'),
+        tie: document.getElementById('rankings-tab-tie')
+    };
 
     function faceWord(val) {
         return FACE_WORDS[val] || FACE_NAMES[val] || String(val);
@@ -1300,22 +1308,15 @@
         tooltipTimeout = setTimeout(() => { handTooltip.style.display = 'none'; }, 5000);
     }
 
-    // --- Rankings overlay ---
-    const rankingsBtn = document.getElementById('rankings-btn');
-    const rankingsOverlay = document.getElementById('rankings-overlay');
-    const rankingsClose = document.getElementById('rankings-close');
-    const rankingsTabButtons = document.querySelectorAll('.rankings-tab-btn');
-    const rankingTabPanels = {
-        hand: document.getElementById('rankings-tab-hand'),
-        tie: document.getElementById('rankings-tab-tie')
-    };
-
     function toggleRankings() {
         rankingsOverlay.style.display = rankingsOverlay.style.display === 'none' ? 'flex' : 'none';
     }
 
     rankingsOverlay.addEventListener('click', function (e) {
         if (e.target === rankingsOverlay) rankingsOverlay.style.display = 'none';
+    });
+    rankingsTabButtons.forEach(btn => {
+        btn.addEventListener('click', () => activateRankingTab(btn.dataset.tab || 'hand'));
     });
 
     // --- Sound effects (Web Audio API) ---
