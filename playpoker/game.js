@@ -75,13 +75,20 @@
     }
 
     function activateRankingTab(tab) {
-        rankingsTabButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
+        const panels = Object.values(rankingTabPanels).filter(Boolean);
+        if (!panels.length) return;
+        Array.from(rankingsTabButtons).forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === tab);
+        });
         Object.keys(rankingTabPanels).forEach(key => {
-            rankingTabPanels[key].classList.toggle('active', key === tab);
+            const panel = rankingTabPanels[key];
+            if (panel) panel.classList.toggle('active', key === tab);
         });
     }
 
-    activateRankingTab('hand');
+    if (Object.values(rankingTabPanels).some(Boolean)) {
+        activateRankingTab('hand');
+    }
 
     // --- Initialization ---
     function init() {
@@ -1309,13 +1316,17 @@
     }
 
     function toggleRankings() {
+        if (!rankingsOverlay) return;
         rankingsOverlay.style.display = rankingsOverlay.style.display === 'none' ? 'flex' : 'none';
     }
 
-    rankingsOverlay.addEventListener('click', function (e) {
-        if (e.target === rankingsOverlay) rankingsOverlay.style.display = 'none';
-    });
-    rankingsTabButtons.forEach(btn => {
+    if (rankingsOverlay) {
+        rankingsOverlay.addEventListener('click', function (e) {
+            if (e.target === rankingsOverlay) rankingsOverlay.style.display = 'none';
+        });
+    }
+
+    Array.from(rankingsTabButtons).forEach(btn => {
         btn.addEventListener('click', () => activateRankingTab(btn.dataset.tab || 'hand'));
     });
 
@@ -1363,8 +1374,8 @@
     checkCallBtn.addEventListener('click', onCheckCall);
     raiseBtn.addEventListener('click', onRaise);
     myHandBtn.addEventListener('click', showMyHand);
-    rankingsBtn.addEventListener('click', toggleRankings);
-    rankingsClose.addEventListener('click', toggleRankings);
+    if (rankingsBtn) rankingsBtn.addEventListener('click', toggleRankings);
+    if (rankingsClose) rankingsClose.addEventListener('click', toggleRankings);
 
     init();
 })();
