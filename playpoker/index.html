@@ -23,6 +23,7 @@
     </div>
 
     <div id="status"></div>
+    <div id="tie-break-info" class="tie-break-info" style="display:none;"></div>
 
     <div class="controls">
         <div class="difficulty-group">
@@ -55,20 +56,40 @@
     <div id="rankings-overlay" class="rankings-overlay" style="display:none">
         <div class="rankings-modal">
             <button id="rankings-close" class="rankings-close">&times;</button>
-            <h2>Hand Rankings</h2>
-            <p class="rankings-sub">Best to worst</p>
-            <ol class="rankings-list">
-                <li><strong>Royal Flush</strong><span>A K Q J 10, same suit</span></li>
-                <li><strong>Straight Flush</strong><span>5 consecutive cards, same suit</span></li>
-                <li><strong>Four of a Kind</strong><span>4 cards of the same rank</span></li>
-                <li><strong>Full House</strong><span>3 of a kind + a pair</span></li>
-                <li><strong>Flush</strong><span>5 cards of the same suit</span></li>
-                <li><strong>Straight</strong><span>5 consecutive cards, any suit</span></li>
-                <li><strong>Three of a Kind</strong><span>3 cards of the same rank</span></li>
-                <li><strong>Two Pair</strong><span>2 different pairs</span></li>
-                <li><strong>One Pair</strong><span>2 cards of the same rank</span></li>
-                <li><strong>High Card</strong><span>No combination — highest card plays</span></li>
-            </ol>
+            <h2>Poker Reference</h2>
+            <div class="rankings-tabs">
+                <button class="tab-btn rankings-tab-btn active" data-tab="hand">Hand Rankings</button>
+                <button class="tab-btn rankings-tab-btn" data-tab="tie">Tie Breakers</button>
+            </div>
+            <div class="tab-panel active" id="rankings-tab-hand">
+                <p class="rankings-sub">Best to worst</p>
+                <ol class="rankings-list">
+                    <li><strong>Royal Flush</strong><span>A K Q J 10, same suit</span></li>
+                    <li><strong>Straight Flush</strong><span>5 consecutive cards, same suit</span></li>
+                    <li><strong>Four of a Kind</strong><span>4 cards of the same rank</span></li>
+                    <li><strong>Full House</strong><span>3 of a kind + a pair</span></li>
+                    <li><strong>Flush</strong><span>5 cards of the same suit</span></li>
+                    <li><strong>Straight</strong><span>5 consecutive cards, any suit</span></li>
+                    <li><strong>Three of a Kind</strong><span>3 cards of the same rank</span></li>
+                    <li><strong>Two Pair</strong><span>2 different pairs</span></li>
+                    <li><strong>One Pair</strong><span>2 cards of the same rank</span></li>
+                    <li><strong>High Card</strong><span>No combination — highest card plays</span></li>
+                </ol>
+            </div>
+            <div class="tab-panel" id="rankings-tab-tie">
+                <p class="rankings-sub">Tie-breaking order (after a hand matches)</p>
+                <ul class="tie-break-list">
+                    <li><strong>High Card:</strong> Compare the highest card, then the next-highest card, all the way to the 5th.</li>
+                    <li><strong>One Pair:</strong> Highest pair wins. If equal, compare kickers from highest to lowest.</li>
+                    <li><strong>Two Pair:</strong> Compare the top pair, then the lower pair, then the kicker.</li>
+                    <li><strong>Three of a Kind:</strong> Highest trips win; if tied, compare kickers.</li>
+                    <li><strong>Straight / Straight Flush:</strong> Higher top card wins. Identical sequences split.</li>
+                    <li><strong>Flush:</strong> Compare highest card, then 2nd, 3rd, etc. until someone wins.</li>
+                    <li><strong>Full House:</strong> First compare the three-of-a-kind rank, then the pair.</li>
+                    <li><strong>Four of a Kind:</strong> Higher quads win. If tied, compare the kicker.</li>
+                    <li><strong>Royal Flush:</strong> Always a tied hand — split the pot.</li>
+                </ul>
+            </div>
         </div>
     </div>
 

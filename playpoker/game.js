@@ -6,6 +6,8 @@
     const SUITS = ['heart', 'spade', 'club', 'diamond'];
     const SUIT_SYMBOLS = { heart: '\u2665', spade: '\u2660', club: '\u2663', diamond: '\u2666' };
     const FACE_NAMES = ['2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+    const FACE_WORDS = ['Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Jack','Queen','King','Ace'];
+    const FACE_PLURALS = ['Twos','Threes','Fours','Fives','Sixes','Sevens','Eights','Nines','Tens','Jacks','Queens','Kings','Aces'];
     const RANK_NAMES = [
         'Royal Flush', 'Straight Flush', 'Four of a Kind', 'Full House',
         'Flush', 'Straight', 'Three of a Kind', 'Two Pair', 'One Pair', 'High Card'
@@ -29,12 +31,14 @@
     let mcSmartPlayer = -1;        // medium mode: which AI uses MC this hand
     const MC_AI_SIMS = 1000;       // simulations for AI Monte Carlo
     let lastHandWinners = [];
+    let lastTieBreakNotes = [];
 
     const tableEl = document.querySelector('.table');
     const communityCardsEl = document.getElementById('community-cards');
     const playersEl = document.getElementById('players');
     const statusEl = document.getElementById('status');
     const potEl = document.getElementById('pot-display');
+    const tieBreakEl = document.getElementById('tie-break-info');
     const dealBtn = document.getElementById('deal-btn');
     const actionsEl = document.getElementById('actions');
     const foldBtn = document.getElementById('fold-btn');
@@ -42,6 +46,34 @@
     const raiseBtn = document.getElementById('raise-btn');
     const raiseInput = document.getElementById('raise-amount');
     const difficultySelect = document.getElementById('difficulty-select');
+
+    function faceWord(val) {
+        return FACE_WORDS[val] || FACE_NAMES[val] || String(val);
+    }
+
+    function facePlural(val) {
+        return FACE_PLURALS[val] || `${faceWord(val)}s`;
+    }
+
+    function setTieBreakInfo(text) {
+        if (!tieBreakEl) return;
+        if (text) {
+            tieBreakEl.textContent = text;
+            tieBreakEl.style.display = 'block';
+        } else {
+            tieBreakEl.textContent = '';
+            tieBreakEl.style.display = 'none';
+        }
+    }
+
+    function activateRankingTab(tab) {
+        rankingsTabButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
+        Object.keys(rankingTabPanels).forEach(key => {
+            rankingTabPanels[key].classList.toggle('active', key === tab);
+        });
+    }
+
+    activateRankingTab('hand');
 
     // --- Initialization ---
     function init() {
@@ -52,6 +84,8 @@
             isDealer: false, busted: false, totalContribution: 0
         }));
         gameOver = false;
+        lastTieBreakNotes = [];
+        setTieBreakInfo('');
         statusEl.textContent = 'Press Deal to start a new hand.';
         dealBtn.style.display = '';
         dealBtn.disabled = false;
@@ -74,6 +108,8 @@
         if (gameOver) return;
         ensureAudio();
         sndDeal();
+        lastTieBreakNotes = [];
+        setTieBreakInfo('');
 
         deck = [];
         for (let s = 0; s < 4; s++)
@@ -505,6 +541,7 @@
         const sidePots = buildSidePots();
         const winnings = new Map();
         const summaries = [];
+        const tieBreakNotes = [];
 
         const awardPot = (potAmount, potWinners, label) => {
             if (!potWinners.length) return;
@@ -526,14 +563,14 @@
             players.forEach((p, idx) => {
                 if (!p.folded && !p.busted) eligible.push(idx);
             });
-            const winners = determinePotWinners(eligible);
+            const winners = determinePotWinners(eligible, tieBreakNotes);
             if (winners.length) {
                 const label = `${winners.map(i => players[i].name).join(' & ')} wins $${pot} with ${RANK_NAMES[players[winners[0]].rankVal]}`;
                 awardPot(pot, winners, label);
             }
         } else {
             sidePots.forEach((potInfo, idx) => {
-                const winners = determinePotWinners(potInfo.eligible);
+                const winners = determinePotWinners(potInfo.eligible, tieBreakNotes);
                 if (winners.length) {
                     const label = idx === 0
                         ? `${winners.map(i => players[i].name).join(' & ')} wins $${potInfo.amount} with ${RANK_NAMES[players[winners[0]].rankVal]}`
@@ -548,6 +585,8 @@
             ? summaries.join('. ') + '.'
             : 'Showdown complete.';
         lastHandWinners = Array.from(winnings.keys());
+        lastTieBreakNotes = tieBreakNotes.slice();
+        setTieBreakInfo(tieBreakNotes.length ? tieBreakNotes.join(' ') : '');
         endHand();
     }
 
@@ -558,6 +597,8 @@
         pot = 0;
         stage = 4; // so cards are revealed
         lastHandWinners = [idx];
+        lastTieBreakNotes = [];
+        setTieBreakInfo('');
         endHand();
     }
 
@@ -776,26 +817,197 @@
     }
 
     function comparePlayers(a, b) {
-        const ra = players[a].rank, rb = players[b].rank;
-        if (!ra && !rb) return 0;
-        if (!ra) return -1;
-        if (!rb) return 1;
-        if (ra.rankVal !== rb.rankVal) return ra.rankVal < rb.rankVal ? 1 : -1;
-        if (ra.high !== rb.high) return ra.high > rb.high ? 1 : -1;
-        if (ra.high2 !== rb.high2) return ra.high2 > rb.high2 ? 1 : -1;
-        if (ra.kicker !== rb.kicker) return ra.kicker > rb.kicker ? 1 : -1;
-        return 0;
+        return comparePlayerRanks(a, b).cmp;
     }
 
-    function determinePotWinners(eligibleIdxs) {
+    function comparePlayerRanks(a, b) {
+        const ra = players[a].rank, rb = players[b].rank;
+        if (!ra && !rb) return { cmp: 0, detail: '' };
+        if (!ra) return { cmp: -1, detail: '' };
+        if (!rb) return { cmp: 1, detail: '' };
+        if (ra.rankVal !== rb.rankVal) {
+            return { cmp: ra.rankVal < rb.rankVal ? 1 : -1, detail: '' };
+        }
+        return compareEqualRank(a, b);
+    }
+
+    function compareEqualRank(idxA, idxB) {
+        const ra = players[idxA].rank;
+        const rb = players[idxB].rank;
+        const nameA = players[idxA].name;
+        const nameB = players[idxB].name;
+        const label = RANK_NAMES[ra.rankVal];
+        const tieMsg = `Tie break: ${nameA} and ${nameB} share identical ${label} hands — pot is split.`;
+
+        const announce = (winnerIdx, detail) => ({
+            cmp: winnerIdx === idxA ? 1 : -1,
+            detail
+        });
+
+        const winnerInfo = (condition, detailBuilder) => {
+            if (!condition) return null;
+            const winnerIdx = condition > 0 ? idxA : idxB;
+            const loserIdx = winnerIdx === idxA ? idxB : idxA;
+            return announce(winnerIdx, detailBuilder(winnerIdx, loserIdx));
+        };
+
+        switch (ra.rankVal) {
+            case 0: // Royal Flush
+                return { cmp: 0, detail: tieMsg };
+            case 1: // Straight Flush
+            case 5: { // Straight
+                if (ra.high !== rb.high) {
+                    const winnerIdx = ra.high > rb.high ? idxA : idxB;
+                    const loserIdx = winnerIdx === idxA ? idxB : idxA;
+                    const winnerRank = players[winnerIdx].rank;
+                    const loserRank = players[loserIdx].rank;
+                    const detail = `Tie break: both had ${label}. ${players[winnerIdx].name}'s highest card (${faceWord(winnerRank.high)}) beats ${players[loserIdx].name}'s ${faceWord(loserRank.high)}.`;
+                    return announce(winnerIdx, detail);
+                }
+                return { cmp: 0, detail: tieMsg };
+            }
+            case 2: { // Four of a Kind
+                if (ra.high !== rb.high) {
+                    const winnerIdx = ra.high > rb.high ? idxA : idxB;
+                    const loserIdx = winnerIdx === idxA ? idxB : idxA;
+                    const winnerRank = players[winnerIdx].rank;
+                    const loserRank = players[loserIdx].rank;
+                    const detail = `Tie break: both made Four of a Kind. ${players[winnerIdx].name}'s four ${facePlural(winnerRank.high)} beat ${players[loserIdx].name}'s ${facePlural(loserRank.high)}.`;
+                    return announce(winnerIdx, detail);
+                }
+                if (ra.kicker !== rb.kicker) {
+                    const winnerIdx = ra.kicker > rb.kicker ? idxA : idxB;
+                    const loserIdx = winnerIdx === idxA ? idxB : idxA;
+                    const detail = `Tie break: both had the same quads; ${players[winnerIdx].name}'s kicker ${faceWord(players[winnerIdx].rank.kicker)} beats ${players[loserIdx].name}'s ${faceWord(players[loserIdx].rank.kicker)}.`;
+                    return announce(winnerIdx, detail);
+                }
+                return { cmp: 0, detail: tieMsg };
+            }
+            case 3: { // Full House
+                if (ra.high !== rb.high) {
+                    const winnerIdx = ra.high > rb.high ? idxA : idxB;
+                    const loserIdx = winnerIdx === idxA ? idxB : idxA;
+                    const detail = `Tie break: both made a Full House. ${players[winnerIdx].name}'s trips of ${facePlural(players[winnerIdx].rank.high)} beat ${players[loserIdx].name}'s ${facePlural(players[loserIdx].rank.high)}.`;
+                    return announce(winnerIdx, detail);
+                }
+                if (ra.high2 !== rb.high2) {
+                    const winnerIdx = ra.high2 > rb.high2 ? idxA : idxB;
+                    const loserIdx = winnerIdx === idxA ? idxB : idxA;
+                    const detail = `Tie break: both had the same trips; ${players[winnerIdx].name}'s pair of ${facePlural(players[winnerIdx].rank.high2)} beats ${players[loserIdx].name}'s ${facePlural(players[loserIdx].rank.high2)}.`;
+                    return announce(winnerIdx, detail);
+                }
+                return { cmp: 0, detail: tieMsg };
+            }
+            case 4: { // Flush
+                if (ra.high !== rb.high) {
+                    const winnerIdx = ra.high > rb.high ? idxA : idxB;
+                    const loserIdx = winnerIdx === idxA ? idxB : idxA;
+                    const detail = `Tie break: both made a Flush. ${players[winnerIdx].name}'s highest card (${faceWord(players[winnerIdx].rank.high)}) beats ${players[loserIdx].name}'s ${faceWord(players[loserIdx].rank.high)}.`;
+                    return announce(winnerIdx, detail);
+                }
+                if (ra.kicker !== rb.kicker) {
+                    const winnerIdx = ra.kicker > rb.kicker ? idxA : idxB;
+                    const loserIdx = winnerIdx === idxA ? idxB : idxA;
+                    const detail = `Tie break: both flushes had ${faceWord(players[winnerIdx].rank.high)} high; ${players[winnerIdx].name}'s next card (${faceWord(players[winnerIdx].rank.kicker)}) beats ${players[loserIdx].name}'s ${faceWord(players[loserIdx].rank.kicker)}.`;
+                    return announce(winnerIdx, detail);
+                }
+                return { cmp: 0, detail: tieMsg };
+            }
+            case 6: { // Three of a Kind
+                if (ra.high !== rb.high) {
+                    const winnerIdx = ra.high > rb.high ? idxA : idxB;
+                    const loserIdx = winnerIdx === idxA ? idxB : idxA;
+                    const detail = `Tie break: both hit Three of a Kind. ${players[winnerIdx].name}'s ${facePlural(players[winnerIdx].rank.high)} beat ${players[loserIdx].name}'s ${facePlural(players[loserIdx].rank.high)}.`;
+                    return announce(winnerIdx, detail);
+                }
+                if (ra.kicker !== rb.kicker) {
+                    const winnerIdx = ra.kicker > rb.kicker ? idxA : idxB;
+                    const loserIdx = winnerIdx === idxA ? idxB : idxA;
+                    const detail = `Tie break: trips matched; ${players[winnerIdx].name}'s kicker ${faceWord(players[winnerIdx].rank.kicker)} beats ${players[loserIdx].name}'s ${faceWord(players[loserIdx].rank.kicker)}.`;
+                    return announce(winnerIdx, detail);
+                }
+                return { cmp: 0, detail: tieMsg };
+            }
+            case 7: { // Two Pair
+                if (ra.high !== rb.high) {
+                    const winnerIdx = ra.high > rb.high ? idxA : idxB;
+                    const loserIdx = winnerIdx === idxA ? idxB : idxA;
+                    const detail = `Tie break: both held Two Pair. ${players[winnerIdx].name}'s top pair of ${facePlural(players[winnerIdx].rank.high)} beats ${players[loserIdx].name}'s ${facePlural(players[loserIdx].rank.high)}.`;
+                    return announce(winnerIdx, detail);
+                }
+                if (ra.high2 !== rb.high2) {
+                    const winnerIdx = ra.high2 > rb.high2 ? idxA : idxB;
+                    const loserIdx = winnerIdx === idxA ? idxB : idxA;
+                    const detail = `Tie break: top pairs matched; ${players[winnerIdx].name}'s second pair of ${facePlural(players[winnerIdx].rank.high2)} beats ${players[loserIdx].name}'s ${facePlural(players[loserIdx].rank.high2)}.`;
+                    return announce(winnerIdx, detail);
+                }
+                if (ra.kicker !== rb.kicker) {
+                    const winnerIdx = ra.kicker > rb.kicker ? idxA : idxB;
+                    const loserIdx = winnerIdx === idxA ? idxB : idxA;
+                    const detail = `Tie break: pairs matched; ${players[winnerIdx].name}'s kicker ${faceWord(players[winnerIdx].rank.kicker)} beats ${players[loserIdx].name}'s ${faceWord(players[loserIdx].rank.kicker)}.`;
+                    return announce(winnerIdx, detail);
+                }
+                return { cmp: 0, detail: tieMsg };
+            }
+            case 8: { // One Pair
+                if (ra.high !== rb.high) {
+                    const winnerIdx = ra.high > rb.high ? idxA : idxB;
+                    const loserIdx = winnerIdx === idxA ? idxB : idxA;
+                    const detail = `Tie break: both had a pair. ${players[winnerIdx].name}'s pair of ${facePlural(players[winnerIdx].rank.high)} beats ${players[loserIdx].name}'s ${facePlural(players[loserIdx].rank.high)}.`;
+                    return announce(winnerIdx, detail);
+                }
+                if (ra.kicker !== rb.kicker) {
+                    const winnerIdx = ra.kicker > rb.kicker ? idxA : idxB;
+                    const loserIdx = winnerIdx === idxA ? idxB : idxA;
+                    const detail = `Tie break: pairs matched; ${players[winnerIdx].name}'s kicker ${faceWord(players[winnerIdx].rank.kicker)} beats ${players[loserIdx].name}'s ${faceWord(players[loserIdx].rank.kicker)}.`;
+                    return announce(winnerIdx, detail);
+                }
+                return { cmp: 0, detail: tieMsg };
+            }
+            case 9: { // High Card
+                if (ra.high !== rb.high) {
+                    const winnerIdx = ra.high > rb.high ? idxA : idxB;
+                    const loserIdx = winnerIdx === idxA ? idxB : idxA;
+                    const detail = `Tie break: high-card battle. ${players[winnerIdx].name}'s ${faceWord(players[winnerIdx].rank.high)} high beats ${players[loserIdx].name}'s ${faceWord(players[loserIdx].rank.high)}.`;
+                    return announce(winnerIdx, detail);
+                }
+                if (ra.high2 !== rb.high2) {
+                    const winnerIdx = ra.high2 > rb.high2 ? idxA : idxB;
+                    const loserIdx = winnerIdx === idxA ? idxB : idxA;
+                    const detail = `Tie break: top cards matched; ${players[winnerIdx].name}'s next card (${faceWord(players[winnerIdx].rank.high2)}) beats ${players[loserIdx].name}'s ${faceWord(players[loserIdx].rank.high2)}.`;
+                    return announce(winnerIdx, detail);
+                }
+                if (ra.kicker !== rb.kicker) {
+                    const winnerIdx = ra.kicker > rb.kicker ? idxA : idxB;
+                    const loserIdx = winnerIdx === idxA ? idxB : idxA;
+                    const detail = `Tie break: still tied; ${players[winnerIdx].name}'s third card (${faceWord(players[winnerIdx].rank.kicker)}) beats ${players[loserIdx].name}'s ${faceWord(players[loserIdx].rank.kicker)}.`;
+                    return announce(winnerIdx, detail);
+                }
+                return { cmp: 0, detail: tieMsg };
+            }
+            default:
+                return { cmp: 0, detail: tieMsg };
+        }
+    }
+
+    function determinePotWinners(eligibleIdxs, tieBreakNotes) {
         if (!eligibleIdxs.length) return [];
         let best = [eligibleIdxs[0]];
+        let tieBreakDetail = null;
         for (let i = 1; i < eligibleIdxs.length; i++) {
             const idx = eligibleIdxs[i];
-            const cmp = comparePlayers(idx, best[0]);
-            if (cmp > 0) best = [idx];
-            else if (cmp === 0) best.push(idx);
+            const comparison = comparePlayerRanks(idx, best[0]);
+            if (comparison.cmp > 0) {
+                best = [idx];
+                tieBreakDetail = comparison.detail || tieBreakDetail;
+            } else if (comparison.cmp === 0) {
+                best.push(idx);
+                if (comparison.detail) tieBreakDetail = comparison.detail;
+            } else if (comparison.cmp < 0 && comparison.detail) {
+                tieBreakDetail = comparison.detail;
+            }
         }
+        if (tieBreakDetail && tieBreakNotes) tieBreakNotes.push(tieBreakDetail);
         return best;
     }
 
@@ -1092,6 +1304,11 @@
     const rankingsBtn = document.getElementById('rankings-btn');
     const rankingsOverlay = document.getElementById('rankings-overlay');
     const rankingsClose = document.getElementById('rankings-close');
+    const rankingsTabButtons = document.querySelectorAll('.rankings-tab-btn');
+    const rankingTabPanels = {
+        hand: document.getElementById('rankings-tab-hand'),
+        tie: document.getElementById('rankings-tab-tie')
+    };
 
     function toggleRankings() {
         rankingsOverlay.style.display = rankingsOverlay.style.display === 'none' ? 'flex' : 'none';
