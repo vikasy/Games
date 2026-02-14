@@ -379,6 +379,24 @@ int main(int argc, char *argv[])
             break;
         }
     }
+    if (num_community == 1 || num_community == 2) {
+        printf("Error: community cards must be 0 (pre-flop), 3 (flop), 4 (turn), or 5 (river).\n");
+        return 1;
+    }
+    /* Check for duplicate cards */
+    {
+        card_t all_cards[7];
+        int n = 0;
+        all_cards[n++] = hole[0]; all_cards[n++] = hole[1];
+        for (int i = 0; i < num_community; i++) all_cards[n++] = community[i];
+        for (int i = 0; i < n; i++)
+            for (int j = i+1; j < n; j++)
+                if (all_cards[i].face == all_cards[j].face && all_cards[i].suit == all_cards[j].suit) {
+                    printf("Error: duplicate card %s%c detected.\n",
+                        face_str(all_cards[i].face), suit_char(all_cards[i].suit));
+                    return 1;
+                }
+    }
     if (arg_idx < argc) pot = atoi(argv[arg_idx++]);
     if (arg_idx < argc) to_call = atoi(argv[arg_idx++]);
 

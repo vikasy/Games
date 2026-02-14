@@ -26,7 +26,7 @@
 
 
 #define DECK_SIZE        (52)
-#define NUM_DECK         (2)
+#define NUM_DECK         (1)
 #define MAX_PLAYERS      (10)
 #define NCARD_PER_SUIT   (13)
 #define MAX_CARD_PLAYER  (13)
@@ -75,7 +75,7 @@ typedef enum Suits {
 } suits_t;
 
 typedef enum Faces {
-    One,
+    One, /* Ace-low */
     Two,
     Three,
     Four,
@@ -96,11 +96,11 @@ typedef enum Faces {
 enum ranks {
     Royal_Flush,    // RF, A-K-Q-J-10 of same suit
     Straight_Flush, // SF, sequence of same suit
-    Four_Ofa_Kind,  // 4K, 4 of same suit
-    Full_House,     // FH, 3 of a suit + 2 of other suit
+    Four_Ofa_Kind,  // 4K, 4 of same face
+    Full_House,     // FH, 3 of a face + 2 of another face
     Flush,          // FL, 5 of same suit
     Straight,       // ST, sequence (any comb of suit)
-    Three_Ofa_Kind, // 3K, 3 of same suit
+    Three_Ofa_Kind, // 3K, 3 of same face
     Two_Pair,       // 2P, 2 of a face + 2 of another face
     One_Pair,       // 1P, 2 of same face
     High_Card,      // HC, card rank (A,K,Q,J,10,...,2)
@@ -178,6 +178,7 @@ static int       rand_num;
 static void fillDeck( void );
 static void shuffleDeck( void );
 static void cutDeck( void );
+static void burnCard( void );
 static bool dealCards( int num, player_t *player );
 static void showPlayer( player_t *player );
 static void showDeck( void );
@@ -196,6 +197,7 @@ int main( void )
     int       cont = MAX_NUM_GAMES;
     int       seed = 0;
     int       match_num = 0;
+    int       current_dealer = 0;
     char     *player_names[MAX_PLAYERS] = {0};
     int       num_win[MAX_PLAYERS] = {0};  // contains number of times each playes has won
     int       rank_stats[NUM_RANKS] = {0}; // contains frequency of each rank occurence 
@@ -240,8 +242,9 @@ int main( void )
         // The game is setup now
          
         // Set the dealer to start with
-        players[dealer_idx%(num_players-1) +1].is_dealer = true;
-        DBG printf("%s is the dealer.\n",players[dealer_idx%(num_players-1) +1].name);
+        current_dealer = dealer_idx%(num_players-1) + 1;
+        players[current_dealer].is_dealer = true;
+        DBG printf("%s is the dealer.\n",players[current_dealer].name);
         ++dealer_idx;
 
         shuffleDeck();
@@ -249,32 +252,71 @@ int main( void )
         showDeck();
 
 #ifdef TESTING
-        // For testing overwrites the deck card with test inputs
-        int testfaces[TOTAL_NUM_CARDS];
-        int testsuits[TOTAL_NUM_CARDS];
-        static int testnum = 0;
-        retval = getTestData(testfaces, testsuits, testnum++);
-        if (retval == false) {
-            printf("Error testing inputs.\n");
-            return -1;
-        }
-        for (int k = 0; k < 13; ++k) {
-            deck[0][k].face = testfaces[k];
-            deck[0][k].suit = testsuits[k];
+        // For testing, overwrite deck with test inputs
+        // Account for dealing order (left of dealer first) and burn cards
+        {
+            int testfaces[TOTAL_NUM_CARDS];
+            int testsuits[TOTAL_NUM_CARDS];
+            static int testnum = 0;
+            retval = getTestData(testfaces, testsuits, testnum++);
+            if (retval == false) {
+                printf("Error testing inputs.\n");
+                return -1;
+            }
+            int pos = 0;
+            int num_real = num_players - 1;
+            // Round 1: first card to each player in deal order
+            for (int p = 0; p < num_real; ++p) {
+                int pi = (current_dealer + p) % num_real + 1;
+                deck[0][pos].face = testfaces[(pi-1)*2];
+                deck[0][pos].suit = testsuits[(pi-1)*2];
+                pos++;
+            }
+            // Round 2: second card to each player in deal order
+            for (int p = 0; p < num_real; ++p) {
+                int pi = (current_dealer + p) % num_real + 1;
+                deck[0][pos].face = testfaces[(pi-1)*2 + 1];
+                deck[0][pos].suit = testsuits[(pi-1)*2 + 1];
+                pos++;
+            }
+            // Board: burn, flop(3), burn, turn(1), burn, river(1)
+            pos++; // burn before flop
+            for (int b = 0; b < 3; ++b) {
+                deck[0][pos].face = testfaces[8 + b];
+                deck[0][pos].suit = testsuits[8 + b];
+                pos++;
+            }
+            pos++; // burn before turn
+            deck[0][pos].face = testfaces[11];
+            deck[0][pos].suit = testsuits[11];
+            pos++;
+            pos++; // burn before river
+            deck[0][pos].face = testfaces[12];
+            deck[0][pos].suit = testsuits[12];
         }
         top_of_deck = 0;
 #endif /* TESTING */
 
-        // Deal cards to each player
+        // Clear player state
         for(i=1; i<num_players; ++i) {
             players[i].is_dealer = false;
             players[i].in_play = true;
             players[i].num_cards = 0;
             players[i].card_cfg.allsuits = 0;
-            retval = dealCards( CARDS_PER_PLAYER, players+i);
-            if( retval == false ) {
-                DBG printf("No more cards to deal\n");
-                break;
+        }
+
+        // Deal one card per round, starting from left of dealer
+        {
+            int round, p, pi;
+            for(round=0; round<CARDS_PER_PLAYER; ++round) {
+                for(p=1; p<num_players; ++p) {
+                    pi = (current_dealer - 1 + p) % (num_players - 1) + 1;
+                    retval = dealCards(1, players+pi);
+                    if( retval == false ) {
+                        DBG printf("No more cards to deal\n");
+                        break;
+                    }
+                }
             }
         }
         
@@ -295,36 +337,39 @@ int main( void )
         // Pre-flop betting
         DBG printf("\n  1. Pre-flop betting skipped.\n\n");
         
-        // Deal starting set of 3 cards to the board 
+        // Burn one card, then deal the flop
+        burnCard();
         retval = dealCards( NUM_BOARD_CARD_1, &board);
         if( retval == false ) {
            DBG printf("No more cards to deal!!!!\n");
         }
         // show board, board is visible to all players
-        showPlayer( players );
-        
+        showPlayer( &board );
+
         // The flop betting
         DBG printf("\n  2. The flop betting skipped.\n\n");
         
-        // deal one more card to the board
+        // Burn one card, then deal the turn
+        burnCard();
         retval = dealCards( NUM_BOARD_CARD_2, &board);
         if( retval == false ) {
            DBG printf("No more cards to deal!!!!\n");
         }
         // show board, board is visible to all players
-        showPlayer( players );
-        
+        showPlayer( &board );
+
         // The turn betting
         DBG printf("\n  3. The turn betting skipped.\n\n");
         
-        // deal one more card to the board
+        // Burn one card, then deal the river
+        burnCard();
         retval = dealCards( NUM_BOARD_CARD_3, &board);
         if( retval == false ) {
            DBG printf("No more cards to dea!!!!\n");
         }
         // show board, board is visible to all players
-        showPlayer( players );
-        
+        showPlayer( &board );
+
         // The river betting
         DBG printf("\n  4. The river betting skipped.\n");
         
@@ -379,7 +424,7 @@ int main( void )
             cont = 0;
             DBG printf("\nBye!\n");
         }
-        select = getchar(); // eat the null char
+        select = getchar(); // eat the newline
 #else
         cont--;
 #endif /* USER_INPUT */
@@ -429,7 +474,7 @@ static void shuffleDeck( void )
     
     // for shuffling, treat all decks together as one big deck
     for( i=DECK_SIZE*NUM_DECK-1; i>0; i--) {
-        j = rand_num%i;    
+        j = rand()%i;
         temp = ((card_t *)deck)[i];
         ((card_t *)deck)[i] = ((card_t *)deck)[j];
         ((card_t *)deck)[j] = temp;
@@ -469,6 +514,22 @@ static void cutDeck( void )
     if( deck_cut_val <0 || deck_cut_val >= DECK_SIZE*NUM_DECK) deck_cut_val = 0;
     top_of_deck = deck_cut_val;
 
+}
+
+
+// Burn one card from the top of the deck (discard face-down per Hold'em rules)
+static void burnCard( void )
+{
+    int i;
+    for (i = top_of_deck; ; ++i) {
+        if (i == DECK_SIZE * NUM_DECK) i = 0;
+        if (((card_t *)deck)[i].indeck) {
+            ((card_t *)deck)[i].indeck = false;
+            top_of_deck = (i + 1) % (DECK_SIZE * NUM_DECK);
+            DBG printf("Burning one card.\n");
+            return;
+        }
+    }
 }
 
 
@@ -527,8 +588,7 @@ static bool dealCards( int num, player_t *player)
     }
     
     player->num_cards += num;
-    top_of_deck += num; 
-    top_of_deck = top_of_deck%(DECK_SIZE*NUM_DECK);
+    top_of_deck = i % (DECK_SIZE * NUM_DECK);
 
     DBG printf("Dealing %d card%s to %s.\n",num,(num>1)?"s":"",player->name);
     
@@ -607,12 +667,12 @@ static void getRank( player_t *player, player_t *board )
     bool          is_threeakind = false;
     int           i = 0, j = 0, k = 0, count = 0;
     int           num_aces = 0;
+    suits_t       flush_suit = NUM_SUITS;
     faces_t       highest_face = Num_Faces;
     card_cfg_t    card_cfg = player->card_cfg;
     int           Indx[4] = { 0 };
     faces_t       face_occur[4][7];
     int           present = 0;
-    unsigned long long mask = 0;
     faces_t       temp_face = Num_Faces;
 
     // initialize to invalid values to differentiate from setting by an valid val
@@ -645,55 +705,95 @@ static void getRank( player_t *player, player_t *board )
         DBG printf("%c%c ", face_symbols[player_hand[i].card.face], suit_symbols[player_hand[i].card.suit]);
     DBG printf("\n");
 
-    // check if there are 5 cards of same suite
-    for( i=CARDS_PER_PLAYER+CARDS_ON_BOARD; i>HAND_SIZE-1 && count<HAND_SIZE-1; --i ) {
-        count = 0;
-        highest_face = player_hand[i-1].card.face;
-        for( j=i-2; j>=0 && count<HAND_SIZE-1; j--) {
-            count += (int)(player_hand[j].card.suit == player_hand[i - 1].card.suit);
+    // === FLUSH DETECTION: count cards per suit ===
+    {
+        int suit_count[4] = {0};
+        for (i = 0; i < CARDS_PER_PLAYER + CARDS_ON_BOARD; i++)
+            suit_count[player_hand[i].card.suit]++;
+        for (i = 0; i < 4; i++) {
+            if (suit_count[i] >= HAND_SIZE) {
+                flush_suit = i;
+                is_flush = true;
+                break;
+            }
+        }
+        if (is_flush) {
+            // Find highest face in flush suit (hand sorted ascending by face)
+            for (i = CARDS_PER_PLAYER + CARDS_ON_BOARD - 1; i >= 0; i--) {
+                if (player_hand[i].card.suit == flush_suit) {
+                    highest_face = player_hand[i].card.face;
+                    break;
+                }
+            }
+            // Ace (face=One=0) is actually the highest card in poker
+            for (i = 0; i < CARDS_PER_PLAYER + CARDS_ON_BOARD && player_hand[i].card.face == One; i++) {
+                if (player_hand[i].card.suit == flush_suit) {
+                    highest_face = Ace;
+                    break;
+                }
+            }
         }
     }
-    is_flush = (count == HAND_SIZE-1);
-    
+
     // Copy all aces in front to the end for easy counting of sequence
     num_aces = 0;
-    while( player_hand[num_aces].card.face==One && num_aces<MAX_ACES_INHAND ) {
-        player_hand[CARDS_PER_PLAYER+CARDS_ON_BOARD+num_aces].card = player_hand[num_aces].card;
-        player_hand[CARDS_PER_PLAYER+CARDS_ON_BOARD+num_aces].card.face = Ace;
+    while (player_hand[num_aces].card.face == One && num_aces < MAX_ACES_INHAND) {
+        player_hand[CARDS_PER_PLAYER + CARDS_ON_BOARD + num_aces].card = player_hand[num_aces].card;
+        player_hand[CARDS_PER_PLAYER + CARDS_ON_BOARD + num_aces].card.face = Ace;
         ++num_aces;
     }
-    
-    // now check if they is a consecitive sequence of length 5
-    count = 0;
-    i = CARDS_PER_PLAYER+CARDS_ON_BOARD+num_aces;
-    while( count < HAND_SIZE-1 && --i>0 ) {
-        // inc count for every pair of consecutive cards back to back
-        // reset the count to 0 if cards not consecutive
-        count = (count+1)*(int)(player_hand[i].card.face==player_hand[i-1].card.face + 1);
+
+    // === STRAIGHT-FLUSH / ROYAL FLUSH DETECTION ===
+    if (is_flush) {
+        // Collect sorted faces of flush suit, including ace-high duplicates
+        faces_t sf_faces[CARDS_PER_PLAYER + CARDS_ON_BOARD + MAX_ACES_INHAND];
+        int nf = 0;
+        for (i = 0; i < CARDS_PER_PLAYER + CARDS_ON_BOARD + num_aces; i++) {
+            if (player_hand[i].card.suit == flush_suit)
+                sf_faces[nf++] = player_hand[i].card.face;
+        }
+        if (nf >= HAND_SIZE) {
+            int sf_count = 1;
+            faces_t sf_high = sf_faces[nf - 1];
+            for (i = nf - 1; i > 0; i--) {
+                if (sf_faces[i] == sf_faces[i - 1] + 1) {
+                    sf_count++;
+                    if (sf_count >= HAND_SIZE) break;
+                } else if (sf_faces[i] != sf_faces[i - 1]) {
+                    sf_count = 1;
+                    sf_high = sf_faces[i - 1];
+                }
+            }
+            if (sf_count >= HAND_SIZE) {
+                if (sf_high == Ace) {
+                    player->rank.pair[0] = Ace;
+                    player->rank.rankval = Royal_Flush;
+                } else {
+                    player->rank.pair[0] = sf_high;
+                    player->rank.rankval = Straight_Flush;
+                }
+                return;
+            }
+        }
     }
-    
-    // if there is a sequence, it could be Royal Flush, Straigth Flush or just Straight
-    if( count == HAND_SIZE-1 ) { 
-        while( (player_hand[i].card.suit==player_hand[i-1].card.suit) 
-               && count>0 && i<CARDS_PER_PLAYER+CARDS_ON_BOARD+num_aces ) {
-            --count;
-            ++i;
+
+    // === STRAIGHT DETECTION (any suit, skipping duplicate faces) ===
+    count = 1;
+    {
+        int total = CARDS_PER_PLAYER + CARDS_ON_BOARD + num_aces;
+        faces_t st_high = player_hand[total - 1].card.face;
+        for (i = total - 1; i > 0; i--) {
+            if (player_hand[i].card.face == player_hand[i - 1].card.face + 1) {
+                count++;
+                if (count >= HAND_SIZE) break;
+            } else if (player_hand[i].card.face != player_hand[i - 1].card.face) {
+                count = 1;
+                st_high = player_hand[i - 1].card.face;
+            }
         }
-        if( count>0 ) {
-            is_straight = !is_flush;
-            highest_face = highest_face*(int)is_flush + player_hand[i+count-1].card.face*(int)is_straight;
-        }
-        else if( (highest_face = player_hand[i+count-1].card.face) != Ace ) {
-/*STRAIGHT FLUSH*/
-            player->rank.pair[0] = highest_face;
-            player->rank.rankval = Straight_Flush;
-            return;
-        }
-        else {
-/*ROYAL FLUSH*/
-            player->rank.pair[0] = Ace;
-            player->rank.rankval = Royal_Flush;
-            return;
+        if (count >= HAND_SIZE) {
+            is_straight = true;
+            if (!is_flush) highest_face = st_high;
         }
     }
 
@@ -790,7 +890,13 @@ static void getRank( player_t *player, player_t *board )
                     player->rank.pair[0] = face_occur[count-1][Indx[count-1]-1];
                     player->rank.pair[1] = face_occur[count-1][Indx[count-1]-2];
                     player->rank.rankval = Two_Pair;
-                    player->rank.kicker = player->rank.pair[1];
+                    // Kicker: highest card not in either pair
+                    temp_face = One;
+                    if (Indx[count-1] > 2 && face_occur[count-1][Indx[count-1]-3] > temp_face)
+                        temp_face = face_occur[count-1][Indx[count-1]-3];
+                    if (Indx[0] > 0 && face_occur[0][Indx[0]-1] > temp_face)
+                        temp_face = face_occur[0][Indx[0]-1];
+                    player->rank.kicker = temp_face;
                     return;
                 }
                 if( Indx[count-1] == 1 ) {
@@ -941,7 +1047,7 @@ static void decideWinner( int num_winner[] )
         num_winner[i]++;
     }
     
-    DBG printf("\nCongrautlations!!\n");
+    DBG printf("\nCongratulations!!\n");
     
 }
 

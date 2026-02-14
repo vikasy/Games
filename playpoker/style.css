@@ -618,8 +618,8 @@ a.back:hover { color: #fff; }
 }
 
 .rankings-tab-btn {
-    flex: 1 1 calc(50% - 6px);
-    padding: 6px 10px;
+    flex: 1 1 calc(33% - 6px);
+    padding: 6px 8px;
     border-radius: 999px;
     border: 1px solid #555;
     background: rgba(0,0,0,0.3);
@@ -628,7 +628,7 @@ a.back:hover { color: #fff; }
     text-transform: uppercase;
     letter-spacing: 0.8px;
     cursor: pointer;
-    font-size: 0.65rem;
+    font-size: 0.6rem;
     text-align: center;
 }
 
@@ -840,6 +840,7 @@ a.back:hover { color: #fff; }
 #game-rules ol {
     margin: 8px 0 10px 20px;
     counter-reset: kidstep;
+    list-style: none;
 }
 
 #game-rules li {

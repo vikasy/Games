@@ -60,6 +60,7 @@ let hasStartedHand = false;
         hand: document.getElementById('rankings-tab-hand'),
         tie: document.getElementById('rankings-tab-tie'),
         terms: document.getElementById('rankings-tab-terms'),
+        tips: document.getElementById('rankings-tab-tips'),
         math: document.getElementById('rankings-tab-math')
     };
     const handHistoryEl = document.getElementById('hand-history');
@@ -187,10 +188,13 @@ let hasStartedHand = false;
             p.totalContribution = 0;
         });
 
-        // Deal 2 hole cards to active (non-busted) players
-        for (let round = 0; round < 2; round++)
-            for (let i = 0; i < NUM_PLAYERS; i++)
+        // Deal 2 hole cards, one per round, starting left of dealer
+        for (let round = 0; round < 2; round++) {
+            for (let offset = 1; offset <= NUM_PLAYERS; offset++) {
+                const i = (dealerIdx + offset) % NUM_PLAYERS;
                 if (!players[i].busted) players[i].hole.push(dealCard());
+            }
+        }
 
         handInProgress = true;
         lastHandWinners = [];
@@ -220,7 +224,7 @@ let hasStartedHand = false;
         currentBet = Math.max(sbAmount, bbAmount);
 
         difficultySelect.disabled = true;
-        statusEl.textContent = 'Pre-flop betting.';
+        statusEl.textContent = 'Cards dealt! Time to bet.';
         renderAll();
 
         // First to act pre-flop is after big blind
@@ -296,8 +300,8 @@ let hasStartedHand = false;
         } else {
             // AI's turn
             hideActions();
-            const thinkMsg = (difficulty === 'hard') ? 'thinking hard...' :
-                (difficulty === 'medium' && currentPlayerIdx === mcSmartPlayer) ? 'thinking carefully...' : 'thinking...';
+            const thinkMsg = (difficulty === 'hard') ? 'thinking really hard...' :
+                (difficulty === 'medium' && currentPlayerIdx === mcSmartPlayer) ? 'thinking carefully...' : 'deciding...';
             statusEl.textContent = `${players[currentPlayerIdx].name} is ${thinkMsg}`;
             setTimeout(() => aiAct(currentPlayerIdx), AI_DELAY);
         }
@@ -556,14 +560,17 @@ let hasStartedHand = false;
 
         stage++;
         if (stage === 1) {
+            dealCard(); // burn
             for (let i = 0; i < 3; i++) communityCards.push(dealCard());
-            statusEl.textContent = 'The Flop.';
+            statusEl.textContent = 'The Flop — 3 shared cards!';
         } else if (stage === 2) {
+            dealCard(); // burn
             communityCards.push(dealCard());
-            statusEl.textContent = 'The Turn.';
+            statusEl.textContent = 'The Turn — 1 more shared card!';
         } else if (stage === 3) {
+            dealCard(); // burn
             communityCards.push(dealCard());
-            statusEl.textContent = 'The River.';
+            statusEl.textContent = 'The River — last shared card!';
         } else if (stage >= 4) {
             showdown();
             return;
@@ -634,7 +641,7 @@ let hasStartedHand = false;
         pot = 0;
         statusEl.textContent = summaries.length
             ? summaries.join('. ') + '.'
-            : 'Showdown complete.';
+            : 'Showdown time!';
         lastHandWinners = Array.from(winnings.keys());
         const uniqueNotes = Array.from(new Set(tieBreakNotes.filter(Boolean)));
         lastTieBreakNotes = uniqueNotes;
@@ -673,7 +680,7 @@ let hasStartedHand = false;
         const alive = players.filter(p => !p.busted);
         if (alive.length === 1) {
             gameOver = true;
-            statusEl.textContent += ` ${alive[0].name} wins the game!`;
+            statusEl.textContent += ` ${alive[0].name} wins the whole game! Great job!`;
             dealBtn.style.display = 'none';
         } else {
             dealBtn.style.display = '';
@@ -743,9 +750,9 @@ let hasStartedHand = false;
         raiseInput.disabled = !canRaise;
 
         if (raisesThisRound >= MAX_RAISES_PER_ROUND) {
-            statusEl.textContent = `Your turn. (Raise cap reached — ${MAX_RAISES_PER_ROUND} raises this round)`;
+            statusEl.textContent = `Your turn! (Max ${MAX_RAISES_PER_ROUND} raises per round — no more raising)`;
         } else {
-            statusEl.textContent = 'Your turn.';
+            statusEl.textContent = 'Your turn!';
         }
     }
 
@@ -792,28 +799,17 @@ let hasStartedHand = false;
         const allCards = [...player.hole, ...communityCards];
         if (allCards.length < 5) return;
         let bestRank = null;
-        let bestVal = 10;
-        let bestHigh = -1;
-        let bestKicker = -1;
-        let bestHigh2 = -1;
         let bestCombo = null;
 
         const combos = combinations(allCards, 5);
         for (const hand of combos) {
             const r = rankHand(hand);
-            if (r.rankVal < bestVal ||
-                (r.rankVal === bestVal && r.high > bestHigh) ||
-                (r.rankVal === bestVal && r.high === bestHigh && r.high2 > bestHigh2) ||
-                (r.rankVal === bestVal && r.high === bestHigh && r.high2 === bestHigh2 && r.kicker > bestKicker)) {
-                bestVal = r.rankVal;
-                bestHigh = r.high;
-                bestHigh2 = r.high2;
-                bestKicker = r.kicker;
+            if (!bestRank || compareRanks(r, bestRank) > 0) {
                 bestRank = r;
                 bestCombo = hand;
             }
         }
-        player.rankVal = bestVal;
+        player.rankVal = bestRank.rankVal;
         player.rank = bestRank;
         player.best5 = bestCombo;
     }
@@ -842,36 +838,49 @@ let hasStartedHand = false;
         const groups = Object.entries(counts).map(([f, c]) => ({ face: parseInt(f), count: c }));
         groups.sort((a, b) => b.count - a.count || b.face - a.face);
 
+        // Build ordered key cards for full tie-breaking (highest to lowest significance)
+        // This array captures all 5 cards in comparison order for each hand type
+        let keyCards;
+
         if (isStraight && isFlush) {
-            if (straightHigh === 12) return { rankVal: 0, high: 12, high2: -1, kicker: -1 };
-            return { rankVal: 1, high: straightHigh, high2: -1, kicker: -1 };
+            keyCards = [straightHigh];
+            if (straightHigh === 12) return { rankVal: 0, high: 12, high2: -1, kicker: -1, keyCards };
+            return { rankVal: 1, high: straightHigh, high2: -1, kicker: -1, keyCards };
         }
         if (groups[0].count === 4) {
-            return { rankVal: 2, high: groups[0].face, high2: -1, kicker: groups[1].face };
+            keyCards = [groups[0].face, groups[1].face];
+            return { rankVal: 2, high: groups[0].face, high2: -1, kicker: groups[1].face, keyCards };
         }
         if (groups[0].count === 3 && groups[1].count === 2) {
-            return { rankVal: 3, high: groups[0].face, high2: groups[1].face, kicker: groups[1].face };
+            keyCards = [groups[0].face, groups[1].face];
+            return { rankVal: 3, high: groups[0].face, high2: groups[1].face, kicker: groups[1].face, keyCards };
         }
         if (isFlush) {
-            return { rankVal: 4, high: faces[4], high2: -1, kicker: faces[3] };
+            keyCards = [faces[4], faces[3], faces[2], faces[1], faces[0]];
+            return { rankVal: 4, high: faces[4], high2: -1, kicker: faces[3], keyCards };
         }
         if (isStraight) {
-            return { rankVal: 5, high: straightHigh, high2: -1, kicker: -1 };
+            keyCards = [straightHigh];
+            return { rankVal: 5, high: straightHigh, high2: -1, kicker: -1, keyCards };
         }
         if (groups[0].count === 3) {
-            const kicker = groups.length > 1 ? Math.max(...groups.slice(1).map(g => g.face)) : -1;
-            return { rankVal: 6, high: groups[0].face, high2: -1, kicker };
+            const kickers = groups.slice(1).map(g => g.face).sort((a, b) => b - a);
+            keyCards = [groups[0].face, ...kickers];
+            return { rankVal: 6, high: groups[0].face, high2: -1, kicker: kickers[0], keyCards };
         }
         if (groups[0].count === 2 && groups[1].count === 2) {
             const highPair = Math.max(groups[0].face, groups[1].face);
             const lowPair = Math.min(groups[0].face, groups[1].face);
-            return { rankVal: 7, high: highPair, high2: lowPair, kicker: groups[2].face };
+            keyCards = [highPair, lowPair, groups[2].face];
+            return { rankVal: 7, high: highPair, high2: lowPair, kicker: groups[2].face, keyCards };
         }
         if (groups[0].count === 2) {
-            const kicker = Math.max(...groups.slice(1).map(g => g.face));
-            return { rankVal: 8, high: groups[0].face, high2: -1, kicker };
+            const kickers = groups.slice(1).map(g => g.face).sort((a, b) => b - a);
+            keyCards = [groups[0].face, ...kickers];
+            return { rankVal: 8, high: groups[0].face, high2: -1, kicker: kickers[0], keyCards };
         }
-        return { rankVal: 9, high: faces[4], high2: faces[3], kicker: faces[2] };
+        keyCards = [faces[4], faces[3], faces[2], faces[1], faces[0]];
+        return { rankVal: 9, high: faces[4], high2: faces[3], kicker: faces[2], keyCards };
     }
 
     function combinations(arr, k) {
@@ -970,33 +979,36 @@ let hasStartedHand = false;
                 }
                 return { cmp: 0, detail: tieMsg };
             }
-            case 4: { // Flush
-                if (ra.high !== rb.high) {
-                    const winnerIdx = ra.high > rb.high ? idxA : idxB;
-                    const loserIdx = winnerIdx === idxA ? idxB : idxA;
-                    const detail = `Tie break: both made a Flush. ${players[winnerIdx].name}'s highest card (${faceWord(players[winnerIdx].rank.high)}) beats ${players[loserIdx].name}'s ${faceWord(players[loserIdx].rank.high)}.`;
-                    return announce(winnerIdx, detail);
-                }
-                if (ra.kicker !== rb.kicker) {
-                    const winnerIdx = ra.kicker > rb.kicker ? idxA : idxB;
-                    const loserIdx = winnerIdx === idxA ? idxB : idxA;
-                    const detail = `Tie break: both flushes had ${faceWord(players[winnerIdx].rank.high)} high; ${players[winnerIdx].name}'s next card (${faceWord(players[winnerIdx].rank.kicker)}) beats ${players[loserIdx].name}'s ${faceWord(players[loserIdx].rank.kicker)}.`;
-                    return announce(winnerIdx, detail);
+            case 4: { // Flush — compare all 5 cards
+                const ka = ra.keyCards || [], kb = rb.keyCards || [];
+                for (let c = 0; c < 5; c++) {
+                    const va = c < ka.length ? ka[c] : -1;
+                    const vb = c < kb.length ? kb[c] : -1;
+                    if (va !== vb) {
+                        const winnerIdx = va > vb ? idxA : idxB;
+                        const loserIdx = winnerIdx === idxA ? idxB : idxA;
+                        const wk = players[winnerIdx].rank.keyCards || [];
+                        const lk = players[loserIdx].rank.keyCards || [];
+                        const pos = c === 0 ? 'highest card' : `card #${c + 1}`;
+                        const detail = `Tie break: both made a Flush. ${players[winnerIdx].name}'s ${pos} (${faceWord(wk[c])}) beats ${players[loserIdx].name}'s ${faceWord(lk[c])}.`;
+                        return announce(winnerIdx, detail);
+                    }
                 }
                 return { cmp: 0, detail: tieMsg };
             }
-            case 6: { // Three of a Kind
-                if (ra.high !== rb.high) {
-                    const winnerIdx = ra.high > rb.high ? idxA : idxB;
-                    const loserIdx = winnerIdx === idxA ? idxB : idxA;
-                    const detail = `Tie break: both hit Three of a Kind. ${players[winnerIdx].name}'s ${facePlural(players[winnerIdx].rank.high)} beat ${players[loserIdx].name}'s ${facePlural(players[loserIdx].rank.high)}.`;
-                    return announce(winnerIdx, detail);
-                }
-                if (ra.kicker !== rb.kicker) {
-                    const winnerIdx = ra.kicker > rb.kicker ? idxA : idxB;
-                    const loserIdx = winnerIdx === idxA ? idxB : idxA;
-                    const detail = `Tie break: trips matched; ${players[winnerIdx].name}'s kicker ${faceWord(players[winnerIdx].rank.kicker)} beats ${players[loserIdx].name}'s ${faceWord(players[loserIdx].rank.kicker)}.`;
-                    return announce(winnerIdx, detail);
+            case 6: { // Three of a Kind — compare trips then both kickers
+                const ka = ra.keyCards || [], kb = rb.keyCards || [];
+                for (let c = 0; c < ka.length; c++) {
+                    if (ka[c] !== kb[c]) {
+                        const winnerIdx = ka[c] > kb[c] ? idxA : idxB;
+                        const loserIdx = winnerIdx === idxA ? idxB : idxA;
+                        const wk = players[winnerIdx].rank.keyCards || [];
+                        const lk = players[loserIdx].rank.keyCards || [];
+                        const detail = c === 0
+                            ? `Tie break: both hit Three of a Kind. ${players[winnerIdx].name}'s ${facePlural(wk[0])} beat ${players[loserIdx].name}'s ${facePlural(lk[0])}.`
+                            : `Tie break: trips matched; ${players[winnerIdx].name}'s kicker ${faceWord(wk[c])} beats ${players[loserIdx].name}'s ${faceWord(lk[c])}.`;
+                        return announce(winnerIdx, detail);
+                    }
                 }
                 return { cmp: 0, detail: tieMsg };
             }
@@ -1021,39 +1033,36 @@ let hasStartedHand = false;
                 }
                 return { cmp: 0, detail: tieMsg };
             }
-            case 8: { // One Pair
-                if (ra.high !== rb.high) {
-                    const winnerIdx = ra.high > rb.high ? idxA : idxB;
-                    const loserIdx = winnerIdx === idxA ? idxB : idxA;
-                    const detail = `Tie break: both had a pair. ${players[winnerIdx].name}'s pair of ${facePlural(players[winnerIdx].rank.high)} beats ${players[loserIdx].name}'s ${facePlural(players[loserIdx].rank.high)}.`;
-                    return announce(winnerIdx, detail);
-                }
-                if (ra.kicker !== rb.kicker) {
-                    const winnerIdx = ra.kicker > rb.kicker ? idxA : idxB;
-                    const loserIdx = winnerIdx === idxA ? idxB : idxA;
-                    const detail = `Tie break: pairs matched; ${players[winnerIdx].name}'s kicker ${faceWord(players[winnerIdx].rank.kicker)} beats ${players[loserIdx].name}'s ${faceWord(players[loserIdx].rank.kicker)}.`;
-                    return announce(winnerIdx, detail);
+            case 8: { // One Pair — compare pair then all 3 kickers
+                const ka = ra.keyCards || [], kb = rb.keyCards || [];
+                for (let c = 0; c < ka.length; c++) {
+                    if (ka[c] !== kb[c]) {
+                        const winnerIdx = ka[c] > kb[c] ? idxA : idxB;
+                        const loserIdx = winnerIdx === idxA ? idxB : idxA;
+                        const wk = players[winnerIdx].rank.keyCards || [];
+                        const lk = players[loserIdx].rank.keyCards || [];
+                        const detail = c === 0
+                            ? `Tie break: both had a pair. ${players[winnerIdx].name}'s pair of ${facePlural(wk[0])} beats ${players[loserIdx].name}'s ${facePlural(lk[0])}.`
+                            : `Tie break: pairs matched; ${players[winnerIdx].name}'s kicker ${faceWord(wk[c])} beats ${players[loserIdx].name}'s ${faceWord(lk[c])}.`;
+                        return announce(winnerIdx, detail);
+                    }
                 }
                 return { cmp: 0, detail: tieMsg };
             }
-            case 9: { // High Card
-                if (ra.high !== rb.high) {
-                    const winnerIdx = ra.high > rb.high ? idxA : idxB;
-                    const loserIdx = winnerIdx === idxA ? idxB : idxA;
-                    const detail = `Tie break: high-card battle. ${players[winnerIdx].name}'s ${faceWord(players[winnerIdx].rank.high)} high beats ${players[loserIdx].name}'s ${faceWord(players[loserIdx].rank.high)}.`;
-                    return announce(winnerIdx, detail);
-                }
-                if (ra.high2 !== rb.high2) {
-                    const winnerIdx = ra.high2 > rb.high2 ? idxA : idxB;
-                    const loserIdx = winnerIdx === idxA ? idxB : idxA;
-                    const detail = `Tie break: top cards matched; ${players[winnerIdx].name}'s next card (${faceWord(players[winnerIdx].rank.high2)}) beats ${players[loserIdx].name}'s ${faceWord(players[loserIdx].rank.high2)}.`;
-                    return announce(winnerIdx, detail);
-                }
-                if (ra.kicker !== rb.kicker) {
-                    const winnerIdx = ra.kicker > rb.kicker ? idxA : idxB;
-                    const loserIdx = winnerIdx === idxA ? idxB : idxA;
-                    const detail = `Tie break: still tied; ${players[winnerIdx].name}'s third card (${faceWord(players[winnerIdx].rank.kicker)}) beats ${players[loserIdx].name}'s ${faceWord(players[loserIdx].rank.kicker)}.`;
-                    return announce(winnerIdx, detail);
+            case 9: { // High Card — compare all 5 cards
+                const ka = ra.keyCards || [], kb = rb.keyCards || [];
+                for (let c = 0; c < 5; c++) {
+                    const va = c < ka.length ? ka[c] : -1;
+                    const vb = c < kb.length ? kb[c] : -1;
+                    if (va !== vb) {
+                        const winnerIdx = va > vb ? idxA : idxB;
+                        const loserIdx = winnerIdx === idxA ? idxB : idxA;
+                        const wk = players[winnerIdx].rank.keyCards || [];
+                        const lk = players[loserIdx].rank.keyCards || [];
+                        const pos = c === 0 ? 'highest card' : `card #${c + 1}`;
+                        const detail = `Tie break: high-card battle. ${players[winnerIdx].name}'s ${pos} (${faceWord(wk[c])}) beats ${players[loserIdx].name}'s ${faceWord(lk[c])}.`;
+                        return announce(winnerIdx, detail);
+                    }
                 }
                 return { cmp: 0, detail: tieMsg };
             }
@@ -1347,18 +1356,23 @@ let hasStartedHand = false;
 
     function compareRanks(a, b) {
         if (a.rankVal !== b.rankVal) return a.rankVal < b.rankVal ? 1 : -1;
-        if (a.high !== b.high) return a.high > b.high ? 1 : -1;
-        if (a.high2 !== b.high2) return a.high2 > b.high2 ? 1 : -1;
-        if (a.kicker !== b.kicker) return a.kicker > b.kicker ? 1 : -1;
+        // Compare all key cards for full tie-breaking
+        const ka = a.keyCards || [];
+        const kb = b.keyCards || [];
+        for (let i = 0; i < Math.max(ka.length, kb.length); i++) {
+            const va = i < ka.length ? ka[i] : -1;
+            const vb = i < kb.length ? kb[i] : -1;
+            if (va !== vb) return va > vb ? 1 : -1;
+        }
         return 0;
     }
 
     function getStrengthLabel(winPct) {
-        if (winPct >= 0.70) return 'Very Strong';
-        if (winPct >= 0.50) return 'Strong';
-        if (winPct >= 0.35) return 'Medium';
-        if (winPct >= 0.20) return 'Weak';
-        return 'Very Weak';
+        if (winPct >= 0.70) return 'Amazing!';
+        if (winPct >= 0.50) return 'Looking good!';
+        if (winPct >= 0.35) return 'Not bad';
+        if (winPct >= 0.20) return 'Risky';
+        return 'Uh oh...';
     }
 
     function getAdvice(winPct, toCall) {
