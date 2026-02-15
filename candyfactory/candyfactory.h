@@ -1,21 +1,21 @@
 /********************************************************************
 Author: Vikas YADAV (vikasy@gmail.com)
-Filename: dealnodeal.h
+Filename: candyfactory.h
 Topic: Declaration of various methods involved in Deal or No Deal game
 
 
 ***********************************************************************/
 
 /*----------------------------------------------------------------
-This file has dealnodeal class declaration
+This file has candyfactory class declaration
 -----------------------------------------------------------------*/
 
 /*----------------------------------------------------------------
 All includes here
 -----------------------------------------------------------------*/
 
-#ifndef __DEALNODEAL_H__
-#define __DEALNODEAL_H__
+#ifndef __CANDYFACTORY_H__
+#define __CANDYFACTORY_H__
 
 #include "../util/util.h"
 
@@ -88,13 +88,13 @@ const static unsigned ncase_to_open[NUM_ROUNDS-1] =
                                     { 6, 5, 4, 3, 2, 1, 1, 1, 1, 1 };
 
 // Class definition for Deal No Deal game
-class dealnodeal {
+class candyfactory {
     public:
-        dealnodeal(void); // constructor
-        ~dealnodeal(void); // destructor
+        candyfactory(void); // constructor
+        ~candyfactory(void); // destructor
         void play_game(mode_t mode = NONE); // play a game of deal or no deal
     
-    friend ostream& operator<<(ostream& o, const dealnodeal& d); // display board
+    friend ostream& operator<<(ostream& o, const candyfactory& d); // display board
 
     private:
         // DATA
@@ -124,7 +124,7 @@ class dealnodeal {
         char*    _get_header_info(void) const;
 };
 
-#endif  /* __DEALNODEAL_H__ */
+#endif  /* __CANDYFACTORY_H__ */
 //EOF
 
 

@@ -1,14 +1,14 @@
 /*----------------------------------------------------------------
 Copyright (c) 2018 Author: Vikas Yadav
-file: dealnodealtest.cpp
+file: candyfactorytest.cpp
 
-This file test dealnodeal object
+This file test candyfactory object
 -----------------------------------------------------------------*/
 
 /*----------------------------------------------------------------
 All includes here
 -----------------------------------------------------------------*/
-#include "dealnodeal.h"
+#include "candyfactory.h"
 
 /*----------------------------------------------------------------
 test 
@@ -17,37 +17,37 @@ test
 void testbed() {
     {
         cout << "TEST A (INTERACTIVE ONE GAME)" << endl;
-        dealnodeal A;
+        candyfactory A;
         A.play_game();
     }
     {
         cout << "TEST B (NON-INTERACTIVE ONE GAME)" << endl;
-        dealnodeal B;
+        candyfactory B;
         B.play_game();
     }
     {
         cout << "TEST C (NON-INTERACTIVE MULTIPLE GAMES)" << endl;
-        dealnodeal C;
+        candyfactory C;
         C.play_game();
     }
     {
         cout << "TEST D (NON-INTERACTIVE MULTIPLE GAMES)" << endl;
-        dealnodeal D;
+        candyfactory D;
         D.play_game();
     }
     {
         cout << "TEST X (NON-INTERACTIVE ONE GAME)" << endl;
-        dealnodeal X;
+        candyfactory X;
         X.play_game(WITH_PC_ONESHOT);
     }
     {
         cout << "TEST Y (NON-INTERACTIVE MULTIPLE GAMES)" << endl;
-        dealnodeal Y;
+        candyfactory Y;
         Y.play_game(WITH_PC_MILLION);
     }
     {
         cout << "TEST Z (NON-INTERACTIVE MULTIPLE GAMES)" << endl;
-        dealnodeal Z;
+        candyfactory Z;
         Z.play_game(WITH_PC_ZERO);
     }
 }

@@ -1,6 +1,6 @@
 // Deal or No Deal
 // Copyright (c) 2017-2026 Vikas Yadav. All rights reserved.
-// Ported from dealnodeal.cpp by Vikas Yadav
+// Ported from candyfactory.cpp by Vikas Yadav
 
 (function () {
     const CASE_MONIES = [

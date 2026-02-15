@@ -18,7 +18,7 @@ Full Texas Hold'em with betting against 3 opponents. Features include:
 - Includes a standalone C Monte Carlo simulator (`poker_advisor.c`)
 
 ### Deal or No Deal
-26 briefcases ranging from $0.01 to $1,000,000. Open cases, evaluate banker offers, and decide: Deal or No Deal? Features banker phone ring sound effect.
+30 boxes ranging from $1 up to $800,000 (total pool $2,333,331; EV ≈ $77,778). Open boxes, evaluate banker offers, or rescale them for classroom rewards (e.g., divide by 100 so the top box is 8,000 points). Features banker phone ring sound effect.
 
 ## Building the Poker Advisor (C)
 

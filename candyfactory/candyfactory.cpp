@@ -1,26 +1,26 @@
 /********************************************************************
 Author: Vikas YADAV (vikasy@gmail.com)
-Filename: dealnodeal.cpp
+Filename: candyfactory.cpp
 Topic: Implementaton of various methods involved in Deal or No Deal game
 
 
 ***********************************************************************/
 
 /*----------------------------------------------------------------
-This file has dealnodeal class definition
+This file has candyfactory class definition
 -----------------------------------------------------------------*/
 
 /*----------------------------------------------------------------
 All includes here
 -----------------------------------------------------------------*/
-#include "dealnodeal.h"
+#include "candyfactory.h"
 #include <string>
 
 /*----------------------------------------------------------------
-Definition of routines of dealnodeal class
+Definition of routines of candyfactory class
 -----------------------------------------------------------------*/
 
-dealnodeal::dealnodeal(void)
+candyfactory::candyfactory(void)
 :_mode(NONE), _player_case(NUM_CASES+1), _curr_rnd_num(0), _stage(INITIAL), 
 _ncase_unopened(NUM_CASES), _curr_avg_unopened(0), _game_num(0)
 {
@@ -34,12 +34,12 @@ _ncase_unopened(NUM_CASES), _curr_avg_unopened(0), _game_num(0)
     _reset_game();
 }
 
-dealnodeal::~dealnodeal(void)
+candyfactory::~candyfactory(void)
 {
     cout << "BYE BYE!!" << endl << endl;
 }
 
-void dealnodeal::play_game(mode_t mode_in)
+void candyfactory::play_game(mode_t mode_in)
 {
     bool       check = false;
     int        select = 0;
@@ -113,7 +113,7 @@ Get user input to start a match, select one-shot interactive or one-shot
 with computer or as many until million or until bankrupt.
 Returns false is there in any error in input, else return true
 */
-bool dealnodeal::_user_input_to_start(void)
+bool candyfactory::_user_input_to_start(void)
 {
     char   select;
     
@@ -190,7 +190,7 @@ There are maximum 11 rounds. In general, each round (except round 0 and 10) has 
 (3) player decides Deal or No Deal,
 (4) If deal, stop game, player gets offer. Else continue.
 */
-float dealnodeal::_play_a_game(void)
+float candyfactory::_play_a_game(void)
 {
     bool     decision = no_deal;
     float    offer = 0;
@@ -232,7 +232,7 @@ float dealnodeal::_play_a_game(void)
 /*
 Shuffle all cases, Player selects a case, and Update game info
 */
-void dealnodeal::_init_game(void)
+void candyfactory::_init_game(void)
 {
     _shuffle_cases();
     _user_input_select_case();
@@ -241,7 +241,7 @@ void dealnodeal::_init_game(void)
 /*
 Fisher and Yates & Durstenfield method to shuffle monies in cases numbered from 1 to NUM_CASES
 */
-void dealnodeal::_shuffle_cases(void)
+void candyfactory::_shuffle_cases(void)
 {
     unsigned i, j;
     float    temp;
@@ -261,7 +261,7 @@ void dealnodeal::_shuffle_cases(void)
 /*
 Let player select their one million dollar case
 */
-void dealnodeal::_user_input_select_case(void)
+void candyfactory::_user_input_select_case(void)
 {
     unsigned select = 0;
     unsigned count = 0;
@@ -293,7 +293,7 @@ void dealnodeal::_user_input_select_case(void)
 /*
 Open a number of unopened cases based on the round number
 */
-void dealnodeal::_open_cases(void)
+void candyfactory::_open_cases(void)
 {
     unsigned num_cases_to_open = ncase_to_open[_curr_rnd_num-1];
     unsigned select;
@@ -350,7 +350,7 @@ average amount of money in remaining unopened cases.
 The bankers formula to decide the offer amount depends a random number in between
 the brackets corresponding to the current round number.
 */
-float dealnodeal::_banker_offer(void)
+float candyfactory::_banker_offer(void)
 {
     float left_bracket = bracket[_curr_rnd_num - 1][0];
     float right_bracket = bracket[_curr_rnd_num - 1][1];
@@ -373,7 +373,7 @@ float dealnodeal::_banker_offer(void)
 /*
 Get player response to bankers offer
 */
-bool dealnodeal::_player_decision(void)
+bool candyfactory::_player_decision(void)
 {
     char select;
 
@@ -407,7 +407,7 @@ bool dealnodeal::_player_decision(void)
 /*
 Update game data for moves so far
 */
-void dealnodeal::_update_avg_money(void)
+void candyfactory::_update_avg_money(void)
 {
     _curr_avg_unopened = 0;
     // Update avg money left
@@ -420,7 +420,7 @@ void dealnodeal::_update_avg_money(void)
 /* 
 The last step of the game after either DEAL is made or no more cases left to open
 */
-float dealnodeal::_finish_game(bool decision)
+float candyfactory::_finish_game(bool decision)
 {
     float amount_won = 0;
     
@@ -460,7 +460,7 @@ float dealnodeal::_finish_game(bool decision)
 /*
 Reset game to start fresh
 */
-void dealnodeal::_reset_game(void)
+void candyfactory::_reset_game(void)
 {
     for (unsigned i = 0; i < NUM_CASES; ++i) {
         _arr_cases[i].money = case_monies[i];
@@ -480,7 +480,7 @@ void dealnodeal::_reset_game(void)
  3. Banker offer $
  4. Deal or No Deal?
  */
-char * dealnodeal::_get_header_info(void) const
+char * candyfactory::_get_header_info(void) const
 {
     switch (_stage) {
     case INITIAL:
@@ -505,7 +505,7 @@ char * dealnodeal::_get_header_info(void) const
 
 
 // FRIEND METHOD 
-ostream& operator<<(ostream& o, const dealnodeal& DnD)
+ostream& operator<<(ostream& o, const candyfactory& DnD)
 {
     unsigned  i, j, k;
     char     *header;
