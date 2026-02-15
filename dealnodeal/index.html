@@ -3,19 +3,224 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Deal or No Deal</title>
+    <title>Candy Factory</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <a href="../index.html" class="back">&larr; All Games</a>
+    <div class="info-modal" id="info-modal" aria-hidden="true">
+        <div class="info-content">
+            <button class="close-info" id="close-info">&times;</button>
+            <div class="info-tabs">
+                <button data-tab="rules" class="info-tab active"><span class="tab-icon">&#x1F4DC;</span><span class="tab-label">Rules</span></button>
+                <button data-tab="tips" class="info-tab"><span class="tab-icon">&#x1F4A1;</span><span class="tab-label">Tips</span></button>
+                <button data-tab="terms" class="info-tab"><span class="tab-icon">&#x1F4D6;</span><span class="tab-label">Terms</span></button>
+                <button data-tab="math" class="info-tab"><span class="tab-icon">&#x1F9EE;</span><span class="tab-label">Math</span></button>
+                <button data-tab="brain" class="info-tab"><span class="tab-icon">&#x1F9E0;</span><span class="tab-label">Brain</span></button>
+            </div>
+            <div class="info-panels">
+                <div class="info-panel active" data-panel="rules">
+                    <div class="panel-header">How to Play</div>
+                    <ul>
+                        <li><span class="item-icon">&#x1F381;</span><span class="item-text">Pick one candy box to keep safe &mdash; it's <em>your</em> secret stash!</span></li>
+                        <li><span class="item-icon">&#x1F513;</span><span class="item-text">Open the number of boxes shown each round to reveal what's inside.</span></li>
+                        <li><span class="item-icon">&#x1F4DE;</span><span class="item-text">The factory manager calls between rounds with a candy trade offer.</span></li>
+                        <li><span class="item-icon">&#x2705;</span><span class="item-text"><strong>Accept</strong> to take the offer, or <strong>Reject</strong> to keep your mystery box.</span></li>
+                        <li><span class="item-icon">&#x1F500;</span><span class="item-text">When only two boxes remain, you get one last chance to <strong>swap</strong>!</span></li>
+                    </ul>
+                </div>
+                <div class="info-panel" data-panel="tips">
+                    <div class="panel-header">Pro Tips</div>
+                    <ul>
+                        <li><span class="item-icon">&#x1F440;</span><span class="item-text">Watch the side boards &mdash; track which big candy piles are still in play.</span></li>
+                        <li><span class="item-icon">&#x1F4AA;</span><span class="item-text">Reject low offers when the giant candy values haven't been opened yet!</span></li>
+                        <li><span class="item-icon">&#x1F4CA;</span><span class="item-text">Compare every offer to the <strong>EV</strong> (average) &mdash; is the manager being generous or stingy?</span></li>
+                        <li><span class="item-icon">&#x1F914;</span><span class="item-text">Don't forget the final swap &mdash; sometimes switching is the winning move!</span></li>
+                    </ul>
+                </div>
+                <div class="info-panel" data-panel="terms">
+                    <div class="panel-header">Candy Dictionary</div>
+                    <div class="term-cards">
+                        <div class="term-card" style="--accent: #ff7eb6;">
+                            <span class="term-icon">&#x1F468;&#x200D;&#x1F373;</span>
+                            <div class="term-body">
+                                <div class="term-name">Factory Manager</div>
+                                <div class="term-def">The candy boss who calls you with trade offers between rounds.</div>
+                            </div>
+                        </div>
+                        <div class="term-card" style="--accent: #ffd700;">
+                            <span class="term-icon">&#x1F4B0;</span>
+                            <div class="term-body">
+                                <div class="term-name">EV (Expected Value) = Mean = Average</div>
+                                <div class="term-def">Three names for the same idea! Add up all the candy values and divide by how many boxes there are. The result is the amount you'd <em>expect</em> to win on average if you played many times.
+                                    <div class="term-example">&#x1F4DD; 3 boxes hold 10, 20, 30 candies. EV = (10+20+30) &divide; 3 = <strong>20 candies</strong>. A fair offer would be around 20.</div>
+                                    See the <strong>Math</strong> tab for more examples and formulas.</div>
+                            </div>
+                        </div>
+                        <div class="term-card" style="--accent: #7dffb3;">
+                            <span class="term-icon">&#x1F3B2;</span>
+                            <div class="term-body">
+                                <div class="term-name">Probability</div>
+                                <div class="term-def">How likely something is, from 0% (no way!) to 100% (for sure!). More big boxes left = higher probability yours is big.</div>
+                            </div>
+                        </div>
+                        <div class="term-card" style="--accent: #6ab0ff;">
+                            <span class="term-icon">&#x2696;&#xFE0F;</span>
+                            <div class="term-body">
+                                <div class="term-name">Odds</div>
+                                <div class="term-def">Another way to say probability, as a ratio. "3 to 1 against" means 1 win for every 3 losses. Same info, different style.</div>
+                            </div>
+                        </div>
+                        <div class="term-card" style="--accent: #c084fc;">
+                            <span class="term-icon">&#x1F4CF;</span>
+                            <div class="term-body">
+                                <div class="term-name">Median</div>
+                                <div class="term-def">Sort all the numbers, then pick the one in the exact middle. Half are above, half below. Unlike the mean, one crazy-big value can't drag it around!
+                                    <div class="term-example">&#x1F4DD; 5 boxes: 3, 7, <strong>10</strong>, 20, 100. Median = <strong>10</strong> (the middle one). Mean = 28 &mdash; notice how the 100 pulls the mean way up but the median stays put!</div>
+                                    See the <strong>Math</strong> tab for even/odd rules and more examples.</div>
+                            </div>
+                        </div>
+                        <div class="term-card" style="--accent: #4ade80;">
+                            <span class="term-icon">&#x1F91D;</span>
+                            <div class="term-body">
+                                <div class="term-name">Accept</div>
+                                <div class="term-def">Take the manager's candy trade and end the game with that amount.</div>
+                            </div>
+                        </div>
+                        <div class="term-card" style="--accent: #f87171;">
+                            <span class="term-icon">&#x270B;</span>
+                            <div class="term-body">
+                                <div class="term-name">Reject</div>
+                                <div class="term-def">Say "No thanks!" and keep opening boxes to hunt for your candy prize.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="info-panel" data-panel="math">
+                    <div class="panel-header">Candy Math Formulas</div>
+                    <div class="math-cards">
+                        <div class="math-card" style="--accent: #ffd700;">
+                            <div class="math-card-head"><span class="mc-icon">&#x1F4B0;</span> Mean = Average = EV</div>
+                            <div class="math-formula">Mean = Sum of all values &divide; How many values</div>
+                            <div class="math-example">Game start: 2,333,331 &divide; 30 = <strong>77,778 candies</strong></div>
+                            <div class="math-example">Boxes 10, 20, 30: Mean = (10+20+30) &divide; 3 = <strong>20</strong></div>
+                            <div class="math-example">Boxes 50, 50, 50: Mean = 150 &divide; 3 = <strong>50</strong>. All same values &rarr; mean = median = every value!</div>
+                            <div class="math-intuition">&#x1F4A1; If you played 1,000 games and always kept your box, your average winnings would land near the EV. That's why a fair offer should be close to the mean!</div>
+                        </div>
+                        <div class="math-card" style="--accent: #c084fc;">
+                            <div class="math-card-head"><span class="mc-icon">&#x1F4CF;</span> Median</div>
+                            <div class="math-formula">Sort all values smallest &rarr; biggest. Pick the middle one!</div>
+                            <div class="math-example"><strong>Odd count:</strong> 3, 7, <strong>10</strong>, 20, 100 &rarr; Median = <strong>10</strong> (the middle one)</div>
+                            <div class="math-example"><strong>Even count:</strong> 4, 8, 12, 20 &rarr; Median = (8+12) &divide; 2 = <strong>10</strong> (average the two middle)</div>
+                            <div class="math-example"><strong>All same:</strong> 50, 50, 50 &rarr; Median = <strong>50</strong> = Mean. When values are identical, they're always equal!</div>
+                            <div class="math-example"><strong>Symmetric:</strong> 10, 20, <strong>30</strong>, 40, 50 &rarr; Median = Mean = <strong>30</strong>. Evenly spread data &rarr; median equals mean!</div>
+                            <div class="math-intuition">&#x1F4A1; The median splits boxes into two equal halves. Unlike the mean, one extreme box can't drag it around. When data is symmetric or all the same, median and mean are equal!</div>
+                        </div>
+                        <div class="math-card" style="--accent: #7dffb3;">
+                            <div class="math-card-head"><span class="mc-icon">&#x1F3B2;</span> Probability</div>
+                            <div class="math-formula">P = Favorable outcomes &divide; Total outcomes &times; 100%</div>
+                            <div class="math-example">15 big boxes out of 22 unopened = 15 &divide; 22 &times; 100 = <strong>68.2%</strong></div>
+                            <div class="math-example">5 big boxes out of 20 = 5 &divide; 20 &times; 100 = <strong>25%</strong></div>
+                            <div class="math-intuition">&#x1F4A1; Imagine putting all unopened boxes in a bag and pulling one out blindfolded. Probability is just counting: how many of those boxes are the kind you want?</div>
+                        </div>
+                        <div class="math-card" style="--accent: #6ab0ff;">
+                            <div class="math-card-head"><span class="mc-icon">&#x2696;&#xFE0F;</span> Odds vs. Probability</div>
+                            <div class="math-formula">Odds a:b &rarr; Probability = a &divide; (a+b) &times; 100%</div>
+                            <div class="math-example">Probability 25% = odds <strong>1:3</strong> (1 favorable to 3 unfavorable)</div>
+                            <div class="math-example">Probability 50% = odds <strong>1:1</strong> (even chance!)</div>
+                            <div class="math-intuition">&#x1F4A1; Probability says "25 out of 100 times." Odds say "for every 1 win, expect 3 losses." Same idea, different style!</div>
+                        </div>
+                        <div class="math-card decision-card" style="--accent: #ff7eb6;">
+                            <div class="math-card-head"><span class="mc-icon">&#x1F9E0;</span> When to Accept?</div>
+                            <div class="math-decision">
+                                <div class="decision-row accept-row">Offer <strong>&gt;</strong> Mean (EV) &rarr; Manager is generous &mdash; take it!</div>
+                                <div class="decision-row reject-row">Offer <strong>&lt;</strong> Mean (EV) &rarr; Your box is worth more &mdash; keep playing!</div>
+                            </div>
+                            <div class="math-intuition" style="margin-top:8px;">&#x1F4A1; The mean is your anchor. Always compare the offer to it!</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="info-panel" data-panel="brain">
+                    <div class="panel-header">Brain Tricks &amp; How to Beat Them</div>
+                    <p class="brain-intro">Your brain plays tricks on you during this game! These are called <strong>biases</strong> &mdash; shortcuts your brain takes that can lead you to bad decisions. Knowing about them is your superpower.</p>
+                    <div class="term-cards">
+                        <div class="term-card" style="--accent: #ff7eb6;">
+                            <span class="term-icon">&#x1F62E;</span>
+                            <div class="term-body">
+                                <div class="term-name">Loss Aversion</div>
+                                <div class="term-def">Losing feels <em>way worse</em> than winning feels good. So your brain screams "take the safe offer!" even when the math says keep playing.
+                                    <div class="term-example">&#x1F6E1;&#xFE0F; <strong>Beat it:</strong> Check the EV! If the offer is below the average, your box is statistically worth more. Trust the math, not the fear.</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="term-card" style="--accent: #ffd700;">
+                            <span class="term-icon">&#x1F3B0;</span>
+                            <div class="term-body">
+                                <div class="term-name">Gambler's Fallacy</div>
+                                <div class="term-def">After opening three small boxes in a row, you might think "a big one is coming next!" But each box is random &mdash; the past doesn't change what's next.
+                                    <div class="term-example">&#x1F6E1;&#xFE0F; <strong>Beat it:</strong> Look at what's actually left on the board. Calculate the real probability instead of going by gut feeling.</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="term-card" style="--accent: #7dffb3;">
+                            <span class="term-icon">&#x1F52E;</span>
+                            <div class="term-body">
+                                <div class="term-name">Illusion of Control</div>
+                                <div class="term-def">You might think "box #7 is my lucky number!" or "I can feel which box has the big prize." But every box was shuffled randomly &mdash; no box is luckier than any other.
+                                    <div class="term-example">&#x1F6E1;&#xFE0F; <strong>Beat it:</strong> Remember: all unopened boxes are equally likely. Your feelings can't change what's inside!</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="term-card" style="--accent: #6ab0ff;">
+                            <span class="term-icon">&#x2693;</span>
+                            <div class="term-body">
+                                <div class="term-name">Anchoring</div>
+                                <div class="term-def">The first offer you see sticks in your brain. If round 1 offers 8,000, then a round 3 offer of 25,000 <em>feels</em> amazing &mdash; even if the EV is 60,000!
+                                    <div class="term-example">&#x1F6E1;&#xFE0F; <strong>Beat it:</strong> Ignore previous offers. Always compare the current offer to the current EV. That's the only number that matters right now.</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="term-card" style="--accent: #c084fc;">
+                            <span class="term-icon">&#x1F576;&#xFE0F;</span>
+                            <div class="term-body">
+                                <div class="term-name">Framing Effect</div>
+                                <div class="term-def">When the 800,000-candy box gets eliminated, it <em>feels</em> devastating. But if 14 other big boxes are still there, you're actually fine! How things are <em>shown</em> to you changes how you feel.
+                                    <div class="term-example">&#x1F6E1;&#xFE0F; <strong>Beat it:</strong> Focus on what's still in play, not what just left. Check the probability tracker &mdash; it shows you the real picture.</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="term-card" style="--accent: #fb923c;">
+                            <span class="term-icon">&#x1F4F0;</span>
+                            <div class="term-body">
+                                <div class="term-name">Availability Bias</div>
+                                <div class="term-def">If your friend won big by rejecting every offer, you might think "I should always reject too!" But their game had different numbers &mdash; what happened before doesn't apply to your boxes.
+                                    <div class="term-example">&#x1F6E1;&#xFE0F; <strong>Beat it:</strong> Every game is fresh. Calculate YOUR probabilities and YOUR EV. Don't copy someone else's strategy blindly.</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="term-card" style="--accent: #f87171;">
+                            <span class="term-icon">&#x1F9D8;</span>
+                            <div class="term-body">
+                                <div class="term-name">Your Superpower: Math!</div>
+                                <div class="term-def">All these brain tricks try to make you decide with emotions. But you have something better: numbers! Every time you feel unsure, check the EV and the probability. The math doesn't have feelings &mdash; it just tells the truth.
+                                    <div class="term-example">&#x1F4AA; <strong>Remember:</strong> Offer &gt; EV = good deal. Offer &lt; EV = keep playing. That one rule beats every brain trick!</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <header>
-        <h1>DEAL OR NO DEAL</h1>
-        <p>26 Briefcases &mdash; $0.01 to $1,000,000</p>
+        <h1>CANDY FACTORY</h1>
+        <p>30 Candy Boxes &mdash; prizes from 1 candy up to 800,000 candies</p>
+        <p class="ev-note">Total candy pool 2,333,331 pieces (average stash 77,778 candies). Scale by 100 for classroom points: top box = 8,000 points/stickers.</p>
     </header>
 
     <div id="status"></div>
     <div id="round-info" class="round-info"></div>
-
+    <div class="pick-timer" id="pick-timer"></div>
     <div class="game-area">
         <div class="money-board" id="money-left"></div>
         <div class="cases-grid" id="cases-grid"></div>
@@ -23,19 +228,80 @@
     </div>
 
     <div class="offer-box" id="offer-box">
-        <h2>BANKER'S OFFER</h2>
-        <div class="amount" id="offer-amount">$0</div>
+        <h2>FACTORY MANAGER'S OFFER</h2>
+        <div class="amount" id="offer-amount">0 candies</div>
         <div class="buttons">
-            <button id="deal-btn">DEAL</button>
-            <button id="nodeal-btn">NO DEAL</button>
+            <button id="deal-btn">Accept</button>
+            <button id="nodeal-btn">Reject</button>
         </div>
     </div>
 
     <div id="prev-offers" class="previous-offers"></div>
 
+    <div class="candy-stats">
+        <div class="stat-chip has-tip" style="--accent: #ffd700;" data-tip="Total candies still hidden in all unopened boxes. Goes down each time you open a box.">
+            <span class="stat-icon">&#x1F36C;</span>
+            <span class="stat-value" id="total-candies">Total: 0</span>
+        </div>
+        <div class="stat-chip has-tip" style="--accent: #6ab0ff;" data-tip="Expected Value — the average candies per box. Total candies &#247; unopened boxes. A fair offer should be close to this!">
+            <span class="stat-icon">&#x1F4B0;</span>
+            <span class="stat-value" id="mean-candies">EV: 0</span>
+        </div>
+        <div class="stat-chip has-tip" style="--accent: #7dffb3;" data-tip="Chance your box has more than 1,000 candies. Big boxes left &#247; total boxes left &#215; 100%.">
+            <span class="stat-icon">&#x1F3B2;</span>
+            <span class="stat-value" id="prob-high">BIG: 0%</span>
+        </div>
+        <div class="stat-note" id="equally-note">&#x1F4A1; All unopened boxes equally likely</div>
+    </div>
+
     <div class="controls">
+        <button class="info-btn" id="info-btn">?</button>
+        <div class="mode-toggle">
+            <label class="mode-label" for="mode-select">&#x1F9EE; Mode:</label>
+            <select id="mode-select" class="mode-select">
+                <option value="passive" selected>Passive &mdash; Watch the Math</option>
+                <option value="active">Active &mdash; Do the Math!</option>
+            </select>
+        </div>
         <button id="new-game-btn">New Game</button>
     </div>
+
+    <div id="math-score" class="math-score" style="display:none;">Math Score: 0 / 0</div>
+
+    <section class="prob-tracker" id="prob-tracker">
+        <h3>&#x1F4CA; Probability Tracker</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th><span class="th-icon">&#x1F504;</span> Round</th>
+                    <th><span class="th-icon">&#x1F513;</span> Opened</th>
+                    <th><span class="th-icon">&#x2B50;</span> Big Left</th>
+                    <th><span class="th-icon">&#x1F3B2;</span> BIG %</th>
+                    <th><span class="th-icon">&#x1F4B0;</span> EV</th>
+                </tr>
+            </thead>
+            <tbody id="prob-body">
+                <tr><td colspan="5" class="tracker-empty">No data yet. Reject an offer to start tracking!</td></tr>
+            </tbody>
+        </table>
+    </section>
+
+    <div id="math-challenge" class="math-challenge" style="display:none;">
+        <div class="math-challenge-card">
+            <div class="math-challenge-label">MATH CHALLENGE</div>
+            <div id="math-question" class="math-question"></div>
+            <div class="math-input-row">
+                <input type="text" id="math-answer" class="math-answer" placeholder="Your answer..." autocomplete="off">
+                <button id="math-check" class="math-check-btn">Check</button>
+            </div>
+            <div id="math-feedback" class="math-feedback"></div>
+        </div>
+    </div>
+
+    <section class="candy-history-panel">
+        <h2>Candy History</h2>
+        <div id="candy-history" class="candy-history">No candy adventures yet. Finish a round to record it!</div>
+    </section>
 
     <footer class="copyright" style="margin-top:32px;color:#555;font-size:0.75rem;text-align:center;">&copy; 2017-2026 Vikas Yadav. All rights reserved.</footer>
     <script src="game.js"></script>
