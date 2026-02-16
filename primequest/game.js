@@ -7,22 +7,27 @@
 
     // ═══ CONSTANTS ═══════════════════════════════════════════════════════
 
-    var RANKS = ['Cadet','Scout','Ranger','Inspector','Detective',
+    var RANKS = ['Cadet','Apprentice','Rule Finder','Scout','Factor Hunter',
+        'Ranger','Inspector','Detective',
         'Codebreaker','Strategist',
-        'Agent','Investigator',
+        'Agent','Investigator','Clock Master','Totient Tracker',
         'Theorist','Observer','Scholar','Analyst',
-        'Specialist','Grand Prime Master','Mersenne Master'];
+        'Specialist','Grand Prime Master','Probability Pro','Cryptographer','Mersenne Master'];
     var LEVEL_NAMES = [
-        'Odd or Even','Divisibility Detective','Sieve of Eratosthenes',
+        'Odd or Even','Multiplication Tables','Divisibility Rules',
+        'Divisibility Detective','Finding Factors','Sieve of Eratosthenes',
         'Perfect Power Spotter','Trial Division Challenge',
         "GCD: Euclid's Algorithm","LCM: Least Common Multiple",
         "Fermat's Little Theorem",'Carmichael Numbers',
+        'Modular Arithmetic',
+        "Euler's Totient Function",
         "Pascal's Triangle: The Pattern","Pascal's Triangle & Primes",
         'Polynomials: Building Blocks','Binomial Expansion',
-        'Polynomial Fermat','The AKS Test','Bonus: Mersenne Primes'
+        'Polynomial Fermat','The AKS Test',
+        'Miller-Rabin Test','RSA Basics','Bonus: Mersenne Primes'
     ];
-    var LEVEL_TIMERS = [10,30,90,40,60, 40,40, 50,50, 50,50, 60,60, 70,90,60]; // seconds per question (sieve uses round-based)
-    var LEVEL_COUNTS = [15,10,1,10,10, 10,10, 8,8, 10,10, 10,8, 6,5,8];      // questions per round
+    var LEVEL_TIMERS = [10,8,15,30,45,90,40,60, 40,40, 50,50,60,40, 50,50, 60,60, 70,90,60,90,60]; // seconds per question
+    var LEVEL_COUNTS = [15,15,10,10,10,1,10,10, 10,10, 8,8,8,8, 10,10, 10,8, 6,5,6,5,8];      // questions per round
 
     var PRIME_FACTS = [
         '2 is the only even prime number!',
@@ -56,7 +61,7 @@
         sieveState: null, questionActive: false
     };
 
-    var TOTAL_LEVELS = 16;
+    var TOTAL_LEVELS = 23;
 
     function loadProgress() {
         try {
@@ -82,6 +87,7 @@
     // ═══ DOM ELEMENTS ════════════════════════════════════════════════════
 
     var $hud = document.getElementById('hud');
+    var $hudBack = document.getElementById('hud-back');
     var $hudScore = document.getElementById('hud-score');
     var $hudStreak = document.getElementById('hud-streak');
     var $hudRank = document.getElementById('hud-rank');
@@ -284,6 +290,98 @@
         return steps;
     }
 
+    function eulerTotient(n) {
+        var result = n, temp = n;
+        for (var p = 2; p * p <= temp; p++) {
+            if (temp % p === 0) {
+                while (temp % p === 0) temp = Math.floor(temp / p);
+                result -= Math.floor(result / p);
+            }
+        }
+        if (temp > 1) result -= Math.floor(result / temp);
+        return result;
+    }
+
+    function modInverse(a, m) {
+        var g = m, x = 0, y = 1, g0 = a, x0 = 1, y0 = 0;
+        while (g0 !== 0) {
+            var q = Math.floor(g / g0);
+            var tmp;
+            tmp = g0; g0 = g - q * g0; g = tmp;
+            tmp = x0; x0 = x - q * x0; x = tmp;
+            tmp = y0; y0 = y - q * y0; y = tmp;
+        }
+        if (g !== 1) return -1;
+        return ((x % m) + m) % m;
+    }
+
+    function millerRabinDecompose(n) {
+        var d = n - 1, s = 0;
+        while (d % 2 === 0) { d = Math.floor(d / 2); s++; }
+        return { s: s, d: d };
+    }
+
+    function millerRabinTest(n, a) {
+        var dec = millerRabinDecompose(n);
+        var s = dec.s, d = dec.d;
+        var x = modPow(a, d, n);
+        var steps = [{ desc: a + '^' + d + ' mod ' + n + ' = ' + x, val: x }];
+        if (x === 1 || x === n - 1) return { steps: steps, isProbablePrime: true };
+        for (var r = 1; r < s; r++) {
+            x = modPow(x, 2, n);
+            steps.push({ desc: 'Square \u2192 ' + x + ' (mod ' + n + ')', val: x });
+            if (x === n - 1) return { steps: steps, isProbablePrime: true };
+            if (x === 1) return { steps: steps, isProbablePrime: false };
+        }
+        return { steps: steps, isProbablePrime: false };
+    }
+
+    function getDivisibilityRule(n, d) {
+        var digits = String(n).split('').map(Number);
+        var divisible = n % d === 0;
+        var explanation = '';
+        if (d === 2) {
+            explanation = 'Last digit is ' + digits[digits.length - 1] + (digits[digits.length - 1] % 2 === 0 ? ' (even)' : ' (odd)');
+        } else if (d === 3 || d === 9) {
+            var sum = digits.reduce(function(a, b) { return a + b; }, 0);
+            explanation = 'Digit sum: ' + digits.join(' + ') + ' = ' + sum + (sum % d === 0 ? ' (divisible by ' + d + ')' : ' (not divisible by ' + d + ')');
+        } else if (d === 5) {
+            explanation = 'Last digit is ' + digits[digits.length - 1] + (digits[digits.length - 1] === 0 || digits[digits.length - 1] === 5 ? ' (0 or 5)' : ' (not 0 or 5)');
+        } else if (d === 10) {
+            explanation = 'Last digit is ' + digits[digits.length - 1] + (digits[digits.length - 1] === 0 ? ' (is 0)' : ' (not 0)');
+        } else if (d === 4) {
+            var last2 = n % 100;
+            explanation = 'Last 2 digits: ' + last2 + (last2 % 4 === 0 ? ' (divisible by 4)' : ' (not divisible by 4)');
+        } else if (d === 6) {
+            explanation = 'Divisible by 2? ' + (n % 2 === 0 ? 'Yes' : 'No') + '. Divisible by 3? ' + (n % 3 === 0 ? 'Yes' : 'No') + '. Need both.';
+        } else if (d === 8) {
+            var last3 = n % 1000;
+            explanation = 'Last 3 digits: ' + last3 + (last3 % 8 === 0 ? ' (divisible by 8)' : ' (not divisible by 8)');
+        } else if (d === 7) {
+            var rest = Math.floor(n / 10);
+            var last = digits[digits.length - 1];
+            var result = rest - 2 * last;
+            explanation = 'Double last digit (' + last + '\u00d72=' + (2*last) + '), subtract from rest (' + rest + '): ' + rest + ' \u2212 ' + (2*last) + ' = ' + result;
+        } else if (d === 11) {
+            var altSum = 0;
+            var parts = [];
+            for (var i = 0; i < digits.length; i++) {
+                if (i % 2 === 0) { altSum += digits[i]; parts.push('' + digits[i]); }
+                else { altSum -= digits[i]; parts.push('\u2212' + digits[i]); }
+            }
+            explanation = 'Alternating sum: ' + parts.join(' ') + ' = ' + altSum + (altSum % 11 === 0 ? ' (divisible by 11)' : ' (not divisible by 11)');
+        }
+        return { divisible: divisible, explanation: explanation };
+    }
+
+    function getAllFactorPairs(n) {
+        var pairs = [];
+        for (var i = 1; i * i <= n; i++) {
+            if (n % i === 0) pairs.push([i, n / i]);
+        }
+        return pairs;
+    }
+
     // ═══ UTILITY ═════════════════════════════════════════════════════════
 
     function randInt(lo, hi) { return lo + Math.floor(Math.random() * (hi - lo + 1)); }
@@ -465,8 +563,7 @@
         $hud.style.display = 'flex';
         updateHUD();
 
-        // Levels 6,7,8 have tutorials
-        if (lvl >= 5) {
+        if (TUTORIALS[lvl]) {
             showTutorial(lvl);
         } else {
             showRoundSelect();
@@ -544,6 +641,7 @@
     }
 
     $completeNext.addEventListener('click', showLevelSelect);
+    $hudBack.addEventListener('click', showLevelSelect);
 
     // ═══ QUESTION FLOW ═══════════════════════════════════════════════════
 
@@ -551,7 +649,7 @@
         stopTimer();
         var count = LEVEL_COUNTS[state.currentLevel];
         // Sieve is 1 question (the whole grid)
-        if (state.currentLevel === 2) count = 1;
+        if (state.currentLevel === 5) count = 1;
 
         if (state.questionIndex >= count) { endLevel(); return; }
 
@@ -567,21 +665,28 @@
 
         switch (state.currentLevel) {
             case 0: renderLevel1(); break;
-            case 1: renderLevel2(); break;
-            case 2: renderLevel3(); break;
-            case 3: renderLevel4(); break;
-            case 4: renderLevel5(); break;
-            case 5: renderLevelGCD(); break;
-            case 6: renderLevelLCM(); break;
-            case 7: renderLevelFermat(); break;
-            case 8: renderLevelCarmichael(); break;
-            case 9: renderLevelPascalIntro(); break;
-            case 10: renderLevelPascalPrimes(); break;
-            case 11: renderLevelPolynomials(); break;
-            case 12: renderLevelBinomial(); break;
-            case 13: renderLevelPolyFermat(); break;
-            case 14: renderLevelAKS(); break;
-            case 15: renderLevelMersenne(); break;
+            case 1: renderLevelMultTables(); break;
+            case 2: renderLevelDivRules(); break;
+            case 3: renderLevel2(); break;
+            case 4: renderLevelFactors(); break;
+            case 5: renderLevel3(); break;
+            case 6: renderLevel4(); break;
+            case 7: renderLevel5(); break;
+            case 8: renderLevelGCD(); break;
+            case 9: renderLevelLCM(); break;
+            case 10: renderLevelFermat(); break;
+            case 11: renderLevelCarmichael(); break;
+            case 12: renderLevelModArith(); break;
+            case 13: renderLevelEulerTotient(); break;
+            case 14: renderLevelPascalIntro(); break;
+            case 15: renderLevelPascalPrimes(); break;
+            case 16: renderLevelPolynomials(); break;
+            case 17: renderLevelBinomial(); break;
+            case 18: renderLevelPolyFermat(); break;
+            case 19: renderLevelAKS(); break;
+            case 20: renderLevelMillerRabin(); break;
+            case 21: renderLevelRSA(); break;
+            case 22: renderLevelMersenne(); break;
         }
 
         if (timer > 0) startTimer(timer);
@@ -632,7 +737,168 @@
         });
     }
 
-    // ═══ LEVEL 2: DIVISIBILITY DETECTIVE ═════════════════════════════════
+    // ═══ LEVEL 1 (NEW): MULTIPLICATION TABLES ═════════════════════════════
+
+    function renderLevelMultTables() {
+        var ranges = [[2,5],[6,9],[10,15]];
+        var r = ranges[state.currentRound] || ranges[0];
+        var a = randInt(r[0], r[1]), b = randInt(r[0], r[1]);
+        var correctVal = a * b;
+
+        $questionPrompt.innerHTML = '<span class="big-number">' + a + ' &times; ' + b + ' = ?</span>';
+
+        // Build a mini multiplication grid visual
+        var gridSize = r[1];
+        var html = '<div class="mult-grid" style="grid-template-columns:repeat(' + (gridSize - r[0] + 2) + ', 36px)">';
+        // Header row
+        html += '<div class="mult-cell header">&times;</div>';
+        for (var c = r[0]; c <= r[1]; c++)
+            html += '<div class="mult-cell header">' + c + '</div>';
+        // Body rows
+        for (var row = r[0]; row <= r[1]; row++) {
+            html += '<div class="mult-cell header">' + row + '</div>';
+            for (var col = r[0]; col <= r[1]; col++) {
+                var isTarget = (row === a && col === b) || (row === b && col === a);
+                html += '<div class="mult-cell' + (isTarget ? ' highlight' : '') + '">' + (isTarget ? '?' : row * col) + '</div>';
+            }
+        }
+        html += '</div>';
+        $questionVisual.innerHTML = html;
+
+        var choices = [correctVal];
+        while (choices.length < 4) {
+            var wrong = correctVal + randInt(-10, 10);
+            if (wrong > 0 && wrong !== correctVal && choices.indexOf(wrong) === -1) choices.push(wrong);
+        }
+        shuffle(choices);
+        var btns = '';
+        for (var i = 0; i < choices.length; i++)
+            btns += '<button class="answer-btn" data-val="' + choices[i] + '">' + choices[i] + '</button>';
+        $answerButtons.innerHTML = btns;
+
+        $answerButtons.querySelectorAll('.answer-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var val = parseInt(btn.dataset.val);
+                var correct = val === correctVal;
+                btn.classList.add(correct ? 'correct' : 'wrong');
+                handleAnswer(correct, a + ' \u00d7 ' + b + ' = ' + correctVal);
+            });
+        });
+    }
+
+    // ═══ LEVEL 2 (NEW): DIVISIBILITY RULES ═══════════════════════════════
+
+    function renderLevelDivRules() {
+        var divisorsPool = state.currentRound === 0 ? [2,3,5,10] :
+                           state.currentRound === 1 ? [4,6,8,9] : [7,11];
+        var d = pickRandom(divisorsPool);
+        // Generate a number that may or may not be divisible
+        var n;
+        if (Math.random() < 0.5) {
+            n = d * randInt(10, 99);
+        } else {
+            n = randInt(100, 999);
+        }
+
+        var ruleResult = getDivisibilityRule(n, d);
+
+        $questionPrompt.innerHTML = 'Is <strong>' + n + '</strong> divisible by <strong>' + d + '</strong>?';
+
+        // Show the rule being applied
+        $questionVisual.innerHTML = '<div class="rule-display">' +
+            '<div style="color:#3cf0ff;font-weight:700;margin-bottom:8px">Divisibility Rule for ' + d + ':</div>' +
+            '<div style="color:#ddd;line-height:1.8">' + ruleResult.explanation + '</div>' +
+            '</div>';
+
+        $answerButtons.innerHTML =
+            '<button class="answer-btn" data-val="yes">YES — Divisible</button>' +
+            '<button class="answer-btn" data-val="no">NO — Not Divisible</button>';
+
+        $answerButtons.querySelectorAll('.answer-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var ans = btn.dataset.val;
+                var correct = (ans === 'yes') === ruleResult.divisible;
+                btn.classList.add(correct ? 'correct' : 'wrong');
+                var msg = n + ' \u00f7 ' + d + ' = ' + (ruleResult.divisible ? (n / d) + ' (exact!)' : Math.floor(n / d) + ' remainder ' + (n % d));
+                handleAnswer(correct, msg);
+            });
+        });
+    }
+
+    // ═══ LEVEL 4 (NEW): FINDING FACTORS ══════════════════════════════════
+
+    function renderLevelFactors() {
+        var ranges = [[10,30],[30,60],[60,99]];
+        var r = ranges[state.currentRound] || ranges[0];
+        var n = randInt(r[0], r[1]);
+        var allPairs = getAllFactorPairs(n);
+
+        $questionPrompt.innerHTML = 'Find <strong>ALL factor pairs</strong> of <span class="big-number">' + n + '</span>';
+
+        var foundPairs = {};
+        var totalPairs = allPairs.length;
+
+        // Show the factor pair slots
+        function renderFactorDisplay() {
+            var html = '<div class="factor-pairs">';
+            for (var i = 0; i < allPairs.length; i++) {
+                var pair = allPairs[i];
+                var key = pair[0] + 'x' + pair[1];
+                if (foundPairs[key]) {
+                    html += '<div class="factor-pair found">' + pair[0] + ' &times; ' + pair[1] + ' = ' + n + ' &#10003;</div>';
+                } else {
+                    html += '<div class="factor-pair">' + pair[0] + ' &times; ? = ' + n + '</div>';
+                }
+            }
+            html += '</div>';
+            $questionVisual.innerHTML = html;
+        }
+
+        renderFactorDisplay();
+
+        // Generate buttons for possible small factors (1 to sqrt(n))
+        var sqrtN = Math.floor(Math.sqrt(n));
+        var html = '<div class="divisor-row">';
+        for (var f = 1; f <= sqrtN; f++) {
+            html += '<button class="divisor-btn factor-test" data-f="' + f + '">' + f + '</button>';
+        }
+        html += '</div><button class="btn btn-primary" id="factors-done" style="margin-top:14px">Done — Found All Pairs!</button>';
+        $answerButtons.innerHTML = html;
+
+        $answerButtons.querySelectorAll('.factor-test').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                if (!state.questionActive) return;
+                var f = parseInt(btn.dataset.f);
+                if (n % f === 0) {
+                    var pair = f + 'x' + (n / f);
+                    if (!foundPairs[pair]) {
+                        foundPairs[pair] = true;
+                        btn.classList.add('clear');
+                        btn.textContent = f + ' \u00d7 ' + (n / f) + ' \u2713';
+                        sndTick();
+                        renderFactorDisplay();
+                    }
+                } else {
+                    btn.classList.add('found');
+                    btn.textContent = f + ' \u2717';
+                    sndWrong();
+                }
+            });
+        });
+
+        document.getElementById('factors-done').addEventListener('click', function() {
+            if (!state.questionActive) return;
+            var foundCount = Object.keys(foundPairs).length;
+            var correct = foundCount === totalPairs;
+            if (correct) {
+                handleAnswer(true, 'All ' + totalPairs + ' factor pairs of ' + n + ' found!');
+            } else {
+                handleAnswer(false, 'Found ' + foundCount + '/' + totalPairs + ' pairs. Missing some! ' + n + ' has factors: ' + allPairs.map(function(p) { return p[0] + '\u00d7' + p[1]; }).join(', '));
+            }
+        });
+    }
+
+    // ═══ LEVEL 3 (OLD 2): DIVISIBILITY DETECTIVE ═════════════════════════
 
     function renderLevel2() {
         var ranges = [[2,50],[2,150],[2,300]];
@@ -924,7 +1190,19 @@
     // ═══ TUTORIALS (Levels 6, 7, 8) ══════════════════════════════════════
 
     var TUTORIALS = {
-        5: [ // GCD: Euclid's Algorithm
+        2: [ // Divisibility Rules
+            '<h3>Divisibility Rules: Quick Tests</h3>Instead of doing long division, there are clever shortcuts to tell if a number divides evenly into another. Let\'s learn the easy ones first!<div class="example"><strong>Rule for 2:</strong> Last digit is even (0, 2, 4, 6, 8)<br>&nbsp;&nbsp;246 → last digit 6 → divisible by 2 ✓<br><br><strong>Rule for 5:</strong> Last digit is 0 or 5<br>&nbsp;&nbsp;735 → last digit 5 → divisible by 5 ✓<br><br><strong>Rule for 10:</strong> Last digit is 0<br>&nbsp;&nbsp;340 → last digit 0 → divisible by 10 ✓<br><br><strong>Rule for 3:</strong> Sum of digits is divisible by 3<br>&nbsp;&nbsp;123 → 1+2+3 = 6, and 6÷3 = 2 → divisible by 3 ✓</div>',
+
+            '<h3>Medium Rules: 4, 6, 8, 9</h3><div class="example"><strong>Rule for 4:</strong> Last TWO digits form a number divisible by 4<br>&nbsp;&nbsp;1,324 → last two digits "24" → 24÷4 = 6 ✓<br><br><strong>Rule for 6:</strong> Divisible by BOTH 2 and 3<br>&nbsp;&nbsp;114 → even ✓ and 1+1+4 = 6, 6÷3 = 2 ✓ → divisible by 6 ✓<br><br><strong>Rule for 8:</strong> Last THREE digits form a number divisible by 8<br>&nbsp;&nbsp;1,160 → last three "160" → 160÷8 = 20 ✓<br><br><strong>Rule for 9:</strong> Sum of digits is divisible by 9<br>&nbsp;&nbsp;738 → 7+3+8 = 18 → 18÷9 = 2 ✓</div>',
+
+            '<h3>Hard Rules: 7 and 11</h3><div class="example"><strong>Rule for 7:</strong> Double the last digit, subtract from the rest. If result is divisible by 7, so is the original.<br>&nbsp;&nbsp;203 → last digit 3, double it → 6. Remove last digit → 20. 20 − 6 = 14. 14÷7 = 2 ✓<br>&nbsp;&nbsp;So 203 is divisible by 7!<br><br><strong>Rule for 11:</strong> Alternating sum of digits (subtract, add, subtract...)<br>&nbsp;&nbsp;2728 → 2 − 7 + 2 − 8 = −11, and −11÷11 = −1 ✓<br>&nbsp;&nbsp;So 2728 is divisible by 11!<br><br>&nbsp;&nbsp;Try 123: 1 − 2 + 3 = 2. 2 is not divisible by 11 ✗</div>These tricks save time — especially useful when checking if a big number is prime!',
+        ],
+        4: [ // Finding Factors
+            '<h3>Finding Factor Pairs</h3>A <strong>factor</strong> of a number divides it with no remainder. Factors always come in pairs!<div class="example"><strong>Factors of 12:</strong><br>1 × 12 = 12 → pair (1, 12)<br>2 × 6 = 12 → pair (2, 6)<br>3 × 4 = 12 → pair (3, 4)<br><br>All factors of 12: {1, 2, 3, 4, 6, 12}</div>To find ALL factor pairs, start at 1 and work up. Stop when the smaller factor would be bigger than &radic;n!',
+
+            '<h3>The Systematic Approach</h3><div class="example"><strong>Find all factors of 24:</strong><br>1 × 24 ✓ &nbsp; (1 ≤ &radic;24 ≈ 4.9)<br>2 × 12 ✓ &nbsp; (2 ≤ 4.9)<br>3 × 8 &nbsp;✓ &nbsp; (3 ≤ 4.9)<br>4 × 6 &nbsp;✓ &nbsp; (4 ≤ 4.9)<br>5 × ? &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (24÷5 = 4.8, not whole ✗)<br><br>Stop! Next would be 5 > &radic;24. We\'ve found them all!<br>Factor pairs: (1,24), (2,12), (3,8), (4,6)</div><div class="formula">You only need to check up to &radic;n to find all factor pairs.</div>',
+        ],
+        8: [ // GCD: Euclid's Algorithm
             '<h3>GCD — Greatest Common Divisor</h3><div class="formula">GCD(a, b) = the biggest number that divides both a and b</div>Imagine you and your friend both have candy bars. Yours has <strong>12</strong> squares, theirs has <strong>8</strong>. You want to break both bars into equal-sized pieces with <strong>no leftovers</strong>. What\'s the biggest piece size that works?<div class="example">Try size 4: &nbsp; 12 ÷ 4 = 3 pieces ✓ &nbsp; 8 ÷ 4 = 2 pieces ✓<br>Try size 5: &nbsp; 12 ÷ 5 = 2 pieces + 2 left over ✗<br>Try size 6: &nbsp; 12 ÷ 6 = 2 pieces ✓ &nbsp; 8 ÷ 6 = 1 piece + 2 left over ✗<br><br>Biggest that works: <strong>4</strong> → GCD(12, 8) = 4</div>But checking every size is slow. There\'s a 2000-year-old shortcut...',
 
             '<h3>Euclid\'s Trick</h3><div class="formula">GCD(a, b) = GCD(b, a mod b)</div>Swap the pair for a smaller one — the GCD stays the same! Keep going until the remainder is 0. The last nonzero remainder is the GCD.<br><br>But <em>why</em> does this magic trick actually work? Let\'s find out with a chocolate bar...',
@@ -941,7 +1219,7 @@
 
             '<h3>Coprime Riddles</h3>Can you figure these out? (Answers below — no peeking!)<div class="example"><strong>Riddle 1:</strong> I\'m coprime with every even number. I\'m the smallest odd number greater than 1. Who am I?<br><br><strong>Riddle 2:</strong> I have exactly 2 factors. I\'m coprime with 100. I\'m between 10 and 20. There are two of us — who are we?<br><br><strong>Riddle 3:</strong> Pick any two consecutive numbers (like 7 and 8, or 41 and 42). Are they coprime? Always? Why?</div><div class="example" style="border-left-color:#ffd740"><strong>Answers:</strong><br>1. <strong>3</strong> — it\'s odd, so it shares no factor of 2 with any even number.<br>2. <strong>11 and 13</strong> — they\'re prime and don\'t divide 100 (= 2² × 5²).<br>3. <strong>Always yes!</strong> If d divides both n and n+1, then d divides (n+1) − n = 1. So d = 1. Consecutive numbers are always coprime!</div>This "coprime" idea is the key to Fermat\'s theorem coming up — it only works when GCD(a, p) = 1!',
         ],
-        6: [ // LCM: Least Common Multiple
+        9: [ // LCM: Least Common Multiple
             '<h3>LCM — The Meeting Point</h3>Imagine two runners on a circular track. Runner A completes a lap every <strong>4 minutes</strong>. Runner B completes a lap every <strong>6 minutes</strong>. They start together — when will they <em>both</em> be at the starting line again at the same time?<div class="example">Runner A is at start at: 4, 8, <strong>12</strong>, 16, 20, <strong>24</strong>, ...<br>Runner B is at start at: 6, <strong>12</strong>, 18, <strong>24</strong>, 30, ...<br><br>First time they meet: <strong>12 minutes!</strong></div><div class="formula">LCM(a, b) = the smallest number that both a and b divide into evenly</div>LCM(4, 6) = 12 — the first "meeting point" of their multiples.',
 
             '<h3>The Shortcut: GCD to the Rescue!</h3>You <em>could</em> list all multiples until you find a match... but there\'s a much faster way. Remember GCD from the last level?<div class="formula">LCM(a, b) = a × b ÷ GCD(a, b)</div>It\'s like the chocolate bar in reverse — GCD tells you what they share, and that helps you find where they meet!<div class="example"><strong>Step 1:</strong> Find GCD(4, 6)<br>&nbsp;&nbsp;4 = 0 × 6 + 4 → wait, 4 &lt; 6, swap: GCD(6, 4)<br>&nbsp;&nbsp;6 = 1 × 4 + 2 &nbsp; (quotient = 1, remainder = 2)<br>&nbsp;&nbsp;4 = 2 × 2 + 0 &nbsp; (remainder = 0 → done!)<br>&nbsp;&nbsp;GCD = <strong>2</strong><br><br><strong>Step 2:</strong> Apply the formula<br>&nbsp;&nbsp;LCM = 4 × 6 ÷ 2 = 24 ÷ 2 = <strong>12</strong> ✓</div>',
@@ -950,7 +1228,7 @@
 
             '<h3>LCM Riddle</h3><div class="example"><strong>Riddle:</strong> Two lighthouses blink at different rates. Lighthouse A blinks every <strong>8 seconds</strong>. Lighthouse B blinks every <strong>12 seconds</strong>. They just blinked together. In how many seconds will they blink together again?<br><br>Hint: find GCD(8, 12) first, then use the formula!</div><div class="example" style="border-left-color:#ffd740"><strong>Answer:</strong><br>GCD(8, 12): &nbsp; 12 = 1 × 8 + 4 → 8 = 2 × 4 + 0 → GCD = <strong>4</strong><br>LCM = 8 × 12 ÷ 4 = 96 ÷ 4 = <strong>24 seconds!</strong><br><br>They\'ll blink together every 24 seconds.</div>',
         ],
-        7: [ // Fermat's Little Theorem
+        10: [ // Fermat's Little Theorem
             '<h3>Fermat\'s Little Theorem</h3>Imagine a clock with <strong>p</strong> hours (instead of 12). You pick a number <strong>a</strong> and keep multiplying by it, wrapping around the clock each time. Fermat discovered something amazing:<div class="formula">If p is prime and GCD(a, p) = 1:<br>a<sup>p−1</sup> ≡ 1 (mod p)</div>No matter what a you pick (as long as it\'s coprime with p), after exactly <strong>p − 1</strong> multiplications, you <em>always</em> land back on <strong>1</strong>!',
 
             '<h3>The Clock Experiment: p = 5, a = 2</h3>Our clock has 5 hours (0, 1, 2, 3, 4). Start at 1, keep multiplying by 2, and wrap around mod 5:<div class="example"><strong>Start:</strong> &nbsp;&nbsp; 1<br><strong>× 2:</strong> &nbsp;&nbsp;&nbsp; 1 × 2 = <strong>2</strong> &nbsp;&nbsp;&nbsp; (2 mod 5 = 2)<br><strong>× 2:</strong> &nbsp;&nbsp;&nbsp; 2 × 2 = <strong>4</strong> &nbsp;&nbsp;&nbsp; (4 mod 5 = 4)<br><strong>× 2:</strong> &nbsp;&nbsp;&nbsp; 4 × 2 = 8 → <strong>3</strong> &nbsp; (8 mod 5 = 3)<br><strong>× 2:</strong> &nbsp;&nbsp;&nbsp; 3 × 2 = 6 → <strong>1</strong> &nbsp; (6 mod 5 = 1) ← back to 1!</div>After p − 1 = <strong>4 multiplications</strong>, we\'re back to 1. It\'s like the clock "resets." Fermat says this <em>always</em> happens when p is prime!',
@@ -959,7 +1237,7 @@
 
             '<h3>Using Fermat as a Prime Detective</h3>Here\'s the clever part — we can <strong>test</strong> if a number n is prime!<div class="example"><strong>Method:</strong> Pick a base a (like 2). Compute a<sup>n−1</sup> mod n.<br><br><strong>If result ≠ 1:</strong> n is <strong>DEFINITELY composite!</strong><br>&nbsp;&nbsp;The clock didn\'t reset → n can\'t be prime.<br><br><strong>If result = 1:</strong> n is <strong>PROBABLY prime.</strong><br>&nbsp;&nbsp;The clock reset → but is it really prime, or just lucky?</div><div class="example" style="border-left-color:#ff5252"><strong>Warning: Fermat Liars!</strong><br>Some sneaky composite numbers (called <strong>Carmichael numbers</strong>) pass this test for <em>every</em> base! The number 561 = 3 × 11 × 17 fools Fermat every time. You\'ll meet them next level...</div>',
         ],
-        8: [ // Carmichael Numbers
+        11: [ // Carmichael Numbers
             '<h3>Carmichael Numbers: The Imposters</h3>In the last level, Fermat\'s test said "if a<sup>n−1</sup> ≡ 1 (mod n), then n is probably prime." But imagine a student who cheats on <em>every</em> exam and always gets 100% — they look like a genius, but they\'re not!<br><br>Carmichael numbers are the math version: <strong>composite</strong> numbers that pass Fermat\'s test for <strong>every single base</strong>. They\'re perfect imposters!',
 
             '<h3>Meet 561: The First Imposter</h3>561 looks prime to Fermat\'s test — but it\'s actually 3 × 11 × 17.<div class="example"><strong>Test base 2:</strong> &nbsp; 2<sup>560</sup> mod 561 = <strong>1</strong> ✓ "probably prime"<br><strong>Test base 3:</strong> &nbsp; 3<sup>560</sup> mod 561 = <strong>1</strong> ✓ "probably prime"<br><strong>Test base 5:</strong> &nbsp; 5<sup>560</sup> mod 561 = <strong>1</strong> ✓ "probably prime"<br><strong>Test base 7:</strong> &nbsp; 7<sup>560</sup> mod 561 = <strong>1</strong> ✓ "probably prime"<br><br>Every coprime base says "prime!" — but 561 = 3 × 11 × 17!</div>The "clock" resets every time, even though 561 isn\'t prime. Fermat is completely fooled!',
@@ -968,7 +1246,25 @@
 
             '<h3>Why They Matter</h3>Carmichael numbers prove that Fermat\'s test alone isn\'t enough. We need <strong>stronger detective tools</strong> — like the Polynomial Fermat test and AKS that you\'ll learn soon.<div class="example"><strong>The first few imposters:</strong><br>561 = 3 × 11 × 17<br>1105 = 5 × 13 × 17<br>1729 = 7 × 13 × 19 &nbsp; (also the famous "taxicab number"!)<br>2465 = 5 × 17 × 29<br>2821 = 7 × 13 × 31</div>There are infinitely many Carmichael numbers — the imposters never stop coming! That\'s why mathematicians needed the AKS test: a detective that <em>never</em> gets fooled.',
         ],
-        9: [ // Pascal's Triangle: The Pattern
+        12: [ // Modular Arithmetic
+            '<h3>Modular Arithmetic: Clock Math</h3>Remember Fermat\'s clock from the last levels? Now it\'s time to master the skill behind it: <strong>modular exponentiation</strong> — computing a<sup>b</sup> mod m, even when a and b are enormous!<div class="formula">a<sup>b</sup> mod m = ?</div><div class="example"><strong>3<sup>4</sup> mod 5:</strong><br>3<sup>1</sup> = 3<br>3<sup>2</sup> = 9 mod 5 = 4<br>3<sup>3</sup> = 3 \u00d7 4 = 12 mod 5 = 2<br>3<sup>4</sup> = 3 \u00d7 2 = 6 mod 5 = <strong>1</strong></div>We reduce at every step so numbers stay small. This is the secret that makes RSA encryption possible!',
+
+            '<h3>The Square-and-Multiply Trick</h3>To compute a<sup>b</sup> mod m for large b, we don\'t multiply b times. Instead, we <strong>square repeatedly</strong> and multiply when needed, using the binary form of b.<div class="example"><strong>2<sup>10</sup> mod 13:</strong><br>10 in binary = 1010<br><br>Start with 1, read bits left-to-right:<br>Bit 1: square(1)=1, \u00d72=<strong>2</strong><br>Bit 0: square(2)=4<br>Bit 1: square(4)=16 mod 13=3, \u00d72=<strong>6</strong><br>Bit 0: square(6)=36 mod 13=<strong>10</strong><br><br>2<sup>10</sup> mod 13 = <strong>10</strong></div>Only 4 steps instead of 10 multiplications!',
+
+            '<h3>Fermat\'s Shortcut for Huge Exponents</h3>When the modulus is prime, Fermat\'s Little Theorem gives you a superpower: a<sup>p\u22121</sup> \u2261 1 (mod p). So you can reduce the exponent first!<div class="example"><strong>What is 273246787654<sup>65536</sup> mod 65537?</strong><br><br>65537 is prime, and 65536 = 65537 \u2212 1<br>By Fermat: a<sup>65536</sup> \u2261 1 (mod 65537)<br>for any a not divisible by 65537.<br><br>GCD(273246787654, 65537) = 1 \u2713<br><br>Answer: <strong>1</strong> — instantly!</div><div class="formula">When p is prime: a<sup>p\u22121</sup> mod p = 1<br>When exponent = k(p\u22121) + r: a<sup>exp</sup> mod p = a<sup>r</sup> mod p</div>',
+
+            '<h3>Reducing the Exponent</h3>For exponents that aren\'t exactly p\u22121, divide the exponent by p\u22121 and use the remainder:<div class="example"><strong>7<sup>100</sup> mod 13:</strong><br><br>13 is prime, so 7<sup>12</sup> \u2261 1 (mod 13)<br>100 = 8 \u00d7 12 + 4<br>So 7<sup>100</sup> = (7<sup>12</sup>)<sup>8</sup> \u00d7 7<sup>4</sup> \u2261 1<sup>8</sup> \u00d7 7<sup>4</sup> = 7<sup>4</sup> (mod 13)<br><br>7<sup>2</sup> = 49 mod 13 = 10<br>7<sup>4</sup> = 10<sup>2</sup> = 100 mod 13 = <strong>9</strong><br><br>7<sup>100</sup> mod 13 = <strong>9</strong></div>',
+        ],
+        13: [ // Euler's Totient Function
+            '<h3>What is \u03c6(n)?</h3>Euler\'s totient function \u03c6(n) counts how many numbers from 1 to n are <strong>coprime</strong> with n (meaning their GCD is 1).<div class="example"><strong>\u03c6(8):</strong> Check each number 1\u20138:<br>GCD(1,8) = 1 \u2713 &nbsp; GCD(2,8) = 2 \u2717 &nbsp; GCD(3,8) = 1 \u2713 &nbsp; GCD(4,8) = 4 \u2717<br>GCD(5,8) = 1 \u2713 &nbsp; GCD(6,8) = 2 \u2717 &nbsp; GCD(7,8) = 1 \u2713 &nbsp; GCD(8,8) = 8 \u2717<br><br>Coprime numbers: {1, 3, 5, 7} \u2192 <strong>\u03c6(8) = 4</strong></div>',
+
+            '<h3>Primes are Easy!</h3>For any prime p, every number from 1 to p\u22121 is coprime with p (since p has no factors other than 1 and itself).<div class="formula">\u03c6(p) = p \u2212 1 &nbsp; (for prime p)</div><div class="example">\u03c6(7) = 6 &nbsp; {1, 2, 3, 4, 5, 6} are all coprime with 7<br>\u03c6(13) = 12 &nbsp; all of {1, 2, ..., 12} are coprime with 13</div>',
+
+            '<h3>The Product Formula</h3>For two distinct primes p and q, there\'s a beautiful shortcut:<div class="formula">\u03c6(p \u00d7 q) = (p\u22121)(q\u22121)</div><div class="example"><strong>\u03c6(15) = \u03c6(3 \u00d7 5)</strong><br>= (3\u22121)(5\u22121) = 2 \u00d7 4 = <strong>8</strong><br><br>Check: numbers 1\u201315 coprime with 15:<br>{1, 2, 4, 7, 8, 11, 13, 14} \u2192 exactly 8! \u2713</div>This formula is the heart of RSA encryption!',
+
+            '<h3>Prime Powers</h3>For a prime raised to a power:<div class="formula">\u03c6(p<sup>k</sup>) = p<sup>k</sup> \u2212 p<sup>k\u22121</sup></div><div class="example"><strong>\u03c6(9) = \u03c6(3\u00b2)</strong><br>= 3\u00b2 \u2212 3\u00b9 = 9 \u2212 3 = <strong>6</strong><br><br>The non-coprime numbers are multiples of 3: {3, 6, 9}<br>That\'s 9/3 = 3 multiples, so 9 \u2212 3 = 6 coprimes. \u2713</div>',
+        ],
+        14: [ // Pascal's Triangle: The Pattern
             '<h3>Pascal\'s Triangle: The Magic Pyramid</h3>Imagine stacking a pyramid of blocks. The top block is <strong>1</strong>. Each block below holds the <strong>sum of the two blocks sitting on top of it</strong>:<div class="example pascal-tutorial-tri">Row 0: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1<br>Row 1: &nbsp;&nbsp;&nbsp;&nbsp;1 &nbsp;1<br>Row 2: &nbsp;&nbsp;&nbsp;1 &nbsp;2 &nbsp;1<br>Row 3: &nbsp;&nbsp;1 &nbsp;3 &nbsp;3 &nbsp;1<br>Row 4: &nbsp;1 &nbsp;4 &nbsp;6 &nbsp;4 &nbsp;1<br>Row 5: 1 &nbsp;5 &nbsp;10 10 &nbsp;5 &nbsp;1</div>This is Pascal\'s Triangle — named after Blaise Pascal, who studied it in 1653 (though Chinese mathematicians knew it 400 years earlier!).',
 
             '<h3>Building It Block by Block</h3>Think of it like making a pyramid of chocolate blocks. Each edge block is always <strong>1</strong> (one block wide). Every other block? Add the two blocks sitting above it!<div class="example"><strong>Building Row 4 from Row 3 (1, 3, 3, 1):</strong><br><br>Edge: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; → <strong>1</strong><br>Block above-left (1) + above-right (3) → <strong>4</strong><br>Block above-left (3) + above-right (3) → <strong>6</strong><br>Block above-left (3) + above-right (1) → <strong>4</strong><br>Edge: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; → <strong>1</strong><br><br>Row 4 = [1, 4, 6, 4, 1] ✓</div>',
@@ -977,14 +1273,14 @@
 
             '<h3>Pascal\'s Triangle Riddles</h3><div class="example"><strong>Riddle 1:</strong> Add up all the numbers in Row 4: 1 + 4 + 6 + 4 + 1 = ?<br>Now try Row 3: 1 + 3 + 3 + 1 = ?<br>See a pattern? (Hint: powers of 2!)<br><br><strong>Riddle 2:</strong> Look at the diagonals going down-right:<br>Diagonal 1: 1, 1, 1, 1, 1, ... (boring!)<br>Diagonal 2: 1, 2, 3, 4, 5, ... (counting!)<br>Diagonal 3: 1, 3, 6, 10, 15, ...<br>What are those numbers in diagonal 3 called?</div><div class="example" style="border-left-color:#ffd740"><strong>Answers:</strong><br>1. Row sums are <strong>powers of 2!</strong> Row 4 = 16 = 2<sup>4</sup>. Row 3 = 8 = 2<sup>3</sup>. Row n sums to 2<sup>n</sup>.<br>2. <strong>Triangle numbers!</strong> 1, 3, 6, 10, 15... — the number of dots in each triangular arrangement.</div>',
         ],
-        10: [ // Pascal's Triangle & Primes
+        15: [ // Pascal's Triangle & Primes
             '<h3>Pascal\'s Secret Prime Detector</h3>Here\'s something amazing — Pascal\'s triangle can <strong>detect prime numbers</strong>! Look at row 5 and row 7:<div class="example"><strong>Row 5:</strong> 1, <strong>5</strong>, <strong>10</strong>, <strong>10</strong>, <strong>5</strong>, 1<br>Divide middle entries by 5: &nbsp; 5÷5=1 ✓ &nbsp; 10÷5=2 ✓ &nbsp; 10÷5=2 ✓ &nbsp; 5÷5=1 ✓<br>ALL divisible by 5! (And 5 is prime!)<br><br><strong>Row 7:</strong> 1, <strong>7</strong>, <strong>21</strong>, <strong>35</strong>, <strong>35</strong>, <strong>21</strong>, <strong>7</strong>, 1<br>Divide middle entries by 7: &nbsp; 7÷7=1 ✓ &nbsp; 21÷7=3 ✓ &nbsp; 35÷7=5 ✓ ... all work!<br>ALL divisible by 7! (And 7 is prime!)</div>Coincidence? Not at all!',
 
             '<h3>Composite Rows Tell a Different Story</h3>Now try a composite number — row 6:<div class="example"><strong>Row 6:</strong> 1, 6, <strong>15</strong>, 20, <strong>15</strong>, 6, 1<br><br>Divide middle entries by 6:<br>&nbsp;&nbsp;6 ÷ 6 = 1 &nbsp;&nbsp;&nbsp; remainder 0 ✓<br>&nbsp;&nbsp;15 ÷ 6 = 2 &nbsp;&nbsp; remainder <strong>3</strong> ✗ ← doesn\'t divide evenly!<br>&nbsp;&nbsp;20 ÷ 6 = 3 &nbsp;&nbsp; remainder <strong>2</strong> ✗ ← doesn\'t divide evenly!<br>&nbsp;&nbsp;15 ÷ 6 = 2 &nbsp;&nbsp; remainder <strong>3</strong> ✗<br>&nbsp;&nbsp;6 ÷ 6 = 1 &nbsp;&nbsp;&nbsp; remainder 0 ✓</div>Some entries leave a <strong>nonzero remainder</strong> when divided by 6. That\'s how the triangle reveals that 6 is composite!',
 
             '<h3>The Rule</h3><div class="formula">n is prime ⟺ every middle entry in row n is divisible by n<br>(i.e., every middle entry mod n = 0)</div>Remember the chocolate bar division words?<br><br>For each middle entry, n is the <strong>divisor</strong>. If the <strong>remainder</strong> is always 0 for every middle entry, n is prime. If even one remainder is nonzero, n is composite!<div class="example"><strong>Quick check — is 11 prime?</strong><br>Row 11: 1, 11, 55, 165, 330, 462, 462, 330, 165, 55, 11, 1<br>11÷11=1r0 ✓ 55÷11=5r0 ✓ 165÷11=15r0 ✓ ... all zero!<br>→ <strong>11 is prime!</strong></div>This idea powers the Polynomial Fermat test you\'ll see later!',
         ],
-        11: [ // Polynomials: Building Blocks
+        16: [ // Polynomials: Building Blocks
             '<h3>Polynomials: Math Recipes</h3>Think of a polynomial like a recipe with different-sized bowls. Each bowl holds some amount of an ingredient, and the bowl size is a power of x:<div class="example"><strong>3x² + 2x + 1</strong> is like:<br><br>Big bowl (x²): &nbsp; 3 scoops<br>Medium bowl (x): 2 scoops<br>Small bowl (1): &nbsp; 1 scoop</div>Each "scoop amount" is called a <strong>term</strong>. This recipe has 3 terms: 3x², 2x, and 1.',
 
             '<h3>The Vocabulary</h3><div class="example"><strong>3x² + 2x + 1</strong><br><br>The <strong>degree</strong> = highest power of x = <strong>2</strong> (the biggest bowl)<br>The <strong>leading coefficient</strong> = number in front of the highest power = <strong>3</strong><br>The <strong>constant term</strong> = the number with no x = <strong>1</strong> (the smallest bowl)<br>Each number (3, 2, 1) is a <strong>coefficient</strong> — it tells you how many scoops</div><div class="formula">Degree 1 = "linear" (a line) &nbsp;&nbsp; like 5x + 3<br>Degree 2 = "quadratic" &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; like 3x² + 2x + 1<br>Degree 3 = "cubic" &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; like x³ − x + 4</div>',
@@ -993,7 +1289,7 @@
 
             '<h3>Multiplying: The Grid Method</h3>Multiplying is like filling a grid — each term in the first polynomial multiplies each term in the second:<div class="example"><strong>(x + 2)(x + 3)</strong><br><br>Draw a grid:<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | &nbsp;x &nbsp;| &nbsp;3<br>&nbsp;&nbsp;───+────+────<br>&nbsp;&nbsp; x &nbsp;| x² &nbsp;| 3x<br>&nbsp;&nbsp; 2 &nbsp;| 2x &nbsp;| 6<br><br>Add everything: x² + 3x + 2x + 6<br>Combine matching bowls: <strong>x² + 5x + 6</strong></div>This "grid method" works for any multiplication — and it connects to the area of a rectangle with sides (x+2) and (x+3)!',
         ],
-        12: [ // Binomial Expansion
+        17: [ // Binomial Expansion
             '<h3>What Happens When You Multiply (x+a) by Itself?</h3>A <strong>binomial</strong> is just a polynomial with 2 terms, like (x + a). Let\'s see what happens when we multiply it by itself:<div class="example"><strong>(x + a)¹</strong> = x + a &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; coefficients: <strong>1, 1</strong><br><br><strong>(x + a)²</strong> = (x+a)(x+a)<br>&nbsp;&nbsp;= x² + ax + ax + a²<br>&nbsp;&nbsp;= x² + 2ax + a² &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; coefficients: <strong>1, 2, 1</strong></div>Wait — 1, 1 and 1, 2, 1... those are rows of Pascal\'s triangle!',
 
             '<h3>The Pattern Gets Clearer</h3><div class="example"><strong>(x + a)³</strong> = x³ + 3ax² + 3a²x + a³<br>Coefficients: <strong>1, 3, 3, 1</strong> ← Row 3 of Pascal\'s triangle!<br><br><strong>(x + a)⁴</strong> = x⁴ + 4ax³ + 6a²x² + 4a³x + a⁴<br>Coefficients: <strong>1, 4, 6, 4, 1</strong> ← Row 4!</div>It\'s not a coincidence — <strong>Row n of Pascal\'s triangle always gives the coefficients of (x + a)<sup>n</sup></strong>!<br><br>Think of it like this: expanding (x+a)<sup>n</sup> means choosing "x or a" from each of n copies. The binomial coefficient C(n,k) counts how many ways to choose a exactly k times.',
@@ -1002,7 +1298,7 @@
 
             '<h3>Why This Connects to Primes</h3>Remember the prime secret from Pascal\'s triangle? For <strong>prime p</strong>, all middle entries of row p are divisible by p.<br><br>So when you expand (x + a)<sup>p</sup> and reduce mod p:<div class="example"><strong>(x + 1)⁵ mod 5:</strong><br>= 1·x⁵ + <strong>5</strong>·x⁴ + <strong>10</strong>·x³ + <strong>10</strong>·x² + <strong>5</strong>·x + 1<br><br>mod 5: the bold terms all vanish (they\'re divisible by 5)!<br>= x⁵ + 0 + 0 + 0 + 0 + 1<br>= <strong>x⁵ + 1</strong></div>All the middle chocolate pieces vanish! Only the first and last survive. This is the <strong>Polynomial Fermat identity</strong> — your next big tool for detecting primes!',
         ],
-        13: [ // Polynomial Fermat
+        18: [ // Polynomial Fermat
             '<h3>From Number Fermat to Polynomial Fermat</h3>Remember Fermat\'s clock? For prime p: a<sup>p</sup> ≡ a (mod p).<br><br>Now imagine upgrading from a single number to a whole <strong>polynomial</strong> — like upgrading from a bicycle to a car!<div class="formula">If p is prime: (x + a)<sup>p</sup> ≡ x<sup>p</sup> + a (mod p)</div>This means: expand (x+a)<sup>p</sup>, and mod p, all the <strong>middle terms vanish</strong>. Only the first and last survive!',
 
             '<h3>The Chocolate Factory Analogy</h3>Think of expanding (x + a)<sup>p</sup> as a chocolate factory that produces p+1 chocolate bars (the terms). Each middle bar has a binomial coefficient C(p,k) stamped on it.<div class="example"><strong>For p = 5:</strong><br>The factory produces bars labeled: C(5,0), C(5,1), C(5,2), C(5,3), C(5,4), C(5,5)<br>= 1, <strong>5</strong>, <strong>10</strong>, <strong>10</strong>, <strong>5</strong>, 1<br><br>Quality control: divide each label by 5 (the "mod 5 test")<br>1 mod 5 = 1 (edge — keep it)<br><strong>5 mod 5 = 0</strong> (divisible — vanishes!)<br><strong>10 mod 5 = 0</strong> (divisible — vanishes!)<br><strong>10 mod 5 = 0</strong> (vanishes!)<br><strong>5 mod 5 = 0</strong> (vanishes!)<br>1 mod 5 = 1 (edge — keep it)<br><br>Only x⁵ and a⁵ survive → <strong>(x+a)⁵ ≡ x⁵ + a (mod 5)</strong></div>',
@@ -1011,14 +1307,34 @@
 
             '<h3>Stronger Than Fermat!</h3>This test is more powerful than the number version because:<div class="example"><strong>Number Fermat:</strong> tests one equation (a<sup>n−1</sup> mod n = 1?)<br>→ Carmichael numbers can fool it<br><br><strong>Polynomial Fermat:</strong> tests n−1 equations (one for EACH middle coefficient)<br>→ A composite would need ALL of them to be zero mod n<br>→ Carmichael numbers <strong>can\'t</strong> fool this!</div><div class="formula">The polynomial test never gets tricked by imposters.</div>But checking all n−1 coefficients is slow for big n. That\'s why we need the AKS test — it finds a shortcut!',
         ],
-        14: [ // The AKS Test
+        19: [ // The AKS Test
             '<h3>The AKS Test: The Ultimate Prime Detective</h3>The Polynomial Fermat test works perfectly — but it\'s <strong>too slow</strong> for big numbers (you\'d need to check millions of coefficients). In 2002, three mathematicians from India found a brilliant shortcut.<div class="example"><strong>The Big Idea:</strong><br>Instead of checking ALL coefficients of (x+a)<sup>n</sup>,<br>reduce the polynomial mod (x<sup>r</sup> − 1) for a small r.<br><br>This shrinks a million-term polynomial down to just r terms!<br>It\'s like checking a <strong>summary</strong> instead of reading the whole book.</div>',
 
             '<h3>The 5-Step Recipe</h3>AKS combines everything you\'ve learned into one algorithm — like a final exam that uses every tool in your toolbox!<div class="example"><strong>Step 1:</strong> Is n a perfect power? (your Level 4 skill!)<br>&nbsp;&nbsp;→ If yes: COMPOSITE. &nbsp; If no: continue.<br><br><strong>Step 2:</strong> Find a suitable small number r<br>&nbsp;&nbsp;→ Technical step — find r where n\'s "order" is big enough.<br><br><strong>Step 3:</strong> Check small factors up to r (your Level 5 skill!)<br>&nbsp;&nbsp;→ If any GCD(a, n) > 1: COMPOSITE. (Level 6 skill!)<br><br><strong>Step 4:</strong> If n ≤ r → PRIME (it\'s small enough to know directly).<br><br><strong>Step 5:</strong> Run the polynomial checks (Level 14 skill!)<br>&nbsp;&nbsp;→ But mod (x<sup>r</sup>−1) to keep it fast.</div>',
 
             '<h3>Why AKS Changed Mathematics</h3>Before AKS, nobody knew if you could test primality <strong>perfectly</strong> and <strong>fast</strong> at the same time.<div class="example"><strong>Trial division:</strong> Perfect but slow for big numbers<br><strong>Fermat\'s test:</strong> Fast but makes mistakes (Carmichael numbers!)<br><strong>AKS:</strong> Perfect AND fast — the best of both worlds!</div>AKS was the first <strong>polynomial-time deterministic</strong> primality test. Published by Agrawal, Kayal, and Saxena — Kayal and Saxena were undergraduate students at the time!<br><br>It proved a 100-year-old conjecture and made headlines around the world.',
         ],
-        15: [ // Bonus: Mersenne Primes
+        20: [ // Miller-Rabin Test
+            '<h3>Miller-Rabin: A Fast Prime Test</h3>The AKS test is perfect, but it\'s slow for really big numbers. The Miller-Rabin test trades a tiny chance of error for blazing speed — and it\'s what computers actually use!<div class="formula">If n is prime, then for any base a:<br>Either a<sup>d</sup> ≡ 1 (mod n)<br>or a<sup>2<sup>r</sup>·d</sup> ≡ −1 (mod n) for some r</div>The key first step: write n − 1 as <strong>2<sup>s</sup> × d</strong> where d is odd.',
+
+            '<h3>Setup: Factoring Out the 2s</h3>Before running the test, we need to decompose n − 1 into the form 2<sup>s</sup> × d:<div class="example"><strong>n = 221, so n − 1 = 220</strong><br><br>220 ÷ 2 = 110 &nbsp; (s = 1)<br>110 ÷ 2 = 55 &nbsp;&nbsp; (s = 2)<br>55 is odd → stop!<br><br>220 = 2² × 55, so <strong>s = 2, d = 55</strong></div>This decomposition splits the Fermat test into multiple checkpoints, making it much harder for composites to slip through!',
+
+            '<h3>The Squaring Sequence</h3>Once we have n − 1 = 2<sup>s</sup> × d, we compute a<sup>d</sup> mod n, then square repeatedly:<div class="example"><strong>Test n = 221, a = 174, s = 2, d = 55</strong><br><br>Start: 174<sup>55</sup> mod 221 = <strong>47</strong><br>&nbsp;&nbsp;47 ≠ 1 and 47 ≠ 220 (which is n−1)<br><br>Square: 47² mod 221 = 2209 mod 221 = <strong>220</strong><br>&nbsp;&nbsp;220 = n−1 → that\'s −1 mod n!<br><br>We found n−1 → <strong>probably prime</strong> for this base.</div>If we never see 1 or n−1 in the sequence, n is definitely composite!',
+
+            '<h3>Witnesses and Liars</h3><div class="example"><strong>Witness:</strong> A base a that proves n is composite<br>(the squaring sequence reveals the fraud)<br><br><strong>Liar:</strong> A base a that says "probably prime" even though n is composite<br>(it got lucky and the sequence looked OK)</div>Unlike Fermat\'s test (where Carmichael numbers fool EVERY base), Miller-Rabin liars are rare. Testing k random bases gives an error probability of at most <strong>4<sup>−k</sup></strong>.<div class="formula">1 base: 25% chance of error at worst<br>5 bases: &lt; 0.1% chance<br>20 bases: astronomically unlikely to be wrong</div>That\'s why it\'s used in practice — run it a few times and you\'re essentially certain!',
+        ],
+        21: [ // RSA Basics
+            '<h3>RSA: The Spy Game</h3>Imagine you want to send a secret number to a friend, but a spy is watching. RSA is like having a <strong>magic mailbox</strong>: anyone can drop a message in (encrypt), but only you have the key to open it (decrypt)!<div class="example"><strong>The idea:</strong><br>Your friend creates a <strong>public key</strong> (the mailbox slot) and a <strong>private key</strong> (the mailbox key).<br><br>Public key: everyone can see it — used to encrypt<br>Private key: only your friend has it — used to decrypt</div>The security relies on one thing: <strong>it\'s hard to factor large numbers!</strong>',
+
+            '<h3>Step 1: Pick Two Primes</h3>Choose two prime numbers p and q. Multiply them together to get n = p × q.<div class="example"><strong>Example:</strong> p = 3, q = 11<br>n = 3 × 11 = <strong>33</strong></div>The magic: everyone knows n (it\'s public), but finding p and q from just n is hard for big numbers! This is the <strong>trapdoor</strong> that makes RSA secure.',
+
+            '<h3>Step 2: Euler\'s Totient and Choosing e</h3>Compute the totient: &phi;(n) = (p−1)(q−1). Then pick e coprime to &phi;(n).<div class="example"><strong>Example:</strong> &phi;(33) = (3−1)(11−1) = 2 × 10 = <strong>20</strong><br><br>Pick e coprime to 20: GCD(e, 20) = 1<br>Try e = 3: GCD(3, 20) = 1 ✓<br><br><strong>e = 3</strong> works!</div>The public key is the pair <strong>(e, n)</strong> = (3, 33).',
+
+            '<h3>Step 3: Find the Private Key d</h3>Find d such that e × d ≡ 1 (mod &phi;(n)). This is the <strong>modular inverse</strong>.<div class="example"><strong>Example:</strong> Find d where 3 × d ≡ 1 (mod 20)<br><br>Try d = 7: &nbsp; 3 × 7 = 21 → 21 mod 20 = <strong>1</strong> ✓<br><br><strong>d = 7</strong> is the private key!</div>The private key is <strong>(d, n)</strong> = (7, 33). Keep d secret!',
+
+            '<h3>Encrypt and Decrypt!</h3><div class="formula">Encrypt: c = m<sup>e</sup> mod n<br>Decrypt: m = c<sup>d</sup> mod n</div><div class="example"><strong>Encrypt message m = 4:</strong><br>c = 4<sup>3</sup> mod 33 = 64 mod 33 = <strong>31</strong><br>Send 31 to your friend!<br><br><strong>Decrypt ciphertext c = 31:</strong><br>m = 31<sup>7</sup> mod 33<br>31<sup>2</sup> = 961 mod 33 = 4<br>31<sup>4</sup> = 4² = 16 mod 33 = 16<br>31<sup>7</sup> = 31<sup>4</sup> × 31<sup>2</sup> × 31 = 16 × 4 × 31 = 1984 mod 33 = <strong>4</strong> ✓<br><br>The original message m = 4 is recovered!</div>It works because of Euler\'s theorem: m<sup>e×d</sup> ≡ m (mod n) when e×d ≡ 1 (mod &phi;(n)).',
+        ],
+        22: [ // Bonus: Mersenne Primes
             '<h3>Mersenne Primes: The Giant Hunters</h3>Take a prime number p. Compute 2<sup>p</sup> − 1. Is the result prime? If so, it\'s called a <strong>Mersenne prime</strong> — and they\'re some of the biggest primes ever found!<div class="formula">M<sub>p</sub> = 2<sup>p</sup> − 1</div><div class="example">p = 2: &nbsp; 2² − 1 = <strong>3</strong> ✓ prime!<br>p = 3: &nbsp; 2³ − 1 = <strong>7</strong> ✓ prime!<br>p = 5: &nbsp; 2⁵ − 1 = <strong>31</strong> ✓ prime!<br>p = 7: &nbsp; 2⁷ − 1 = <strong>127</strong> ✓ prime!</div>Looks like it always works... right?',
 
             '<h3>Not So Fast!</h3>Just because p is prime doesn\'t guarantee 2<sup>p</sup> − 1 is prime. Some "Mersenne candidates" are imposters!<div class="example">p = 11: &nbsp; 2<sup>11</sup> − 1 = 2047<br><br>Is 2047 prime? Let\'s check...<br>2047 ÷ 23 = 89 &nbsp; (remainder 0!)<br><br>2047 = 23 × 89 — <strong>NOT prime!</strong></div>So 11 is prime, but M<sub>11</sub> isn\'t. Figuring out which primes p make 2<sup>p</sup> − 1 prime is one of the deepest unsolved mysteries in all of mathematics!',
@@ -2336,7 +2652,643 @@
         });
     }
 
-    // ═══ LEVEL 16: BONUS — MERSENNE PRIMES ═══════════════════════════════
+    // ═══ LEVEL 12 (NEW): MODULAR ARITHMETIC ════════════════════════════════
+
+    function renderLevelModArith() {
+        if (state.currentRound === 0) renderModArithA();
+        else if (state.currentRound === 1) renderModArithB();
+        else renderModArithC();
+    }
+
+    // Round A: Small modular exponentiation — compute a^b mod m step by step
+    function renderModArithA() {
+        var bases = [2,3,4,5,7];
+        var mods = [5,7,11,13];
+        var a = pickRandom(bases);
+        var m = pickRandom(mods.filter(function(x) { return x > a; }));
+        var b = randInt(3, 8);
+        var correctVal = modPow(a, b, m);
+
+        $questionPrompt.innerHTML = 'Compute <strong>' + a + '<sup>' + b + '</sup> mod ' + m + '</strong>';
+
+        // Show step-by-step
+        var html = '<div class="mod-exp-steps">';
+        var val = 1;
+        for (var i = 1; i <= b; i++) {
+            val = (val * a) % m;
+            html += '<div class="step' + (i === b ? ' highlight' : '') + '">' + a + '<sup>' + i + '</sup> mod ' + m + ' = ' + val + '</div>';
+        }
+        html += '</div>';
+        $questionVisual.innerHTML = html;
+
+        var choices = [correctVal];
+        while (choices.length < 4) {
+            var w = randInt(0, m - 1);
+            if (choices.indexOf(w) === -1) choices.push(w);
+        }
+        shuffle(choices);
+        var btns = '';
+        for (var i = 0; i < choices.length; i++)
+            btns += '<button class="answer-btn" data-val="' + choices[i] + '">' + choices[i] + '</button>';
+        $answerButtons.innerHTML = btns;
+
+        $answerButtons.querySelectorAll('.answer-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var val = parseInt(btn.dataset.val);
+                var correct = val === correctVal;
+                btn.classList.add(correct ? 'correct' : 'wrong');
+                handleAnswer(correct, a + '^' + b + ' mod ' + m + ' = ' + correctVal);
+            });
+        });
+    }
+
+    // Round B: Use Fermat's shortcut — a^(p-1) ≡ 1 (mod p)
+    function renderModArithB() {
+        var primes = [7, 11, 13, 17, 19, 23, 29, 31];
+        var p = pickRandom(primes);
+        var a = randInt(2, p - 1);
+
+        // Generate exponent that may or may not equal p-1
+        var expTypes = [
+            { exp: p - 1, hint: 'exp = p\u22121' },
+            { exp: 2 * (p - 1), hint: 'exp = 2(p\u22121)' },
+            { exp: (p - 1) + randInt(1, p - 2), hint: 'exp has a remainder' }
+        ];
+        var chosen = pickRandom(expTypes);
+        var exp = chosen.exp;
+        var remainder = exp % (p - 1);
+        var correctVal = remainder === 0 ? 1 : modPow(a, remainder, p);
+
+        $questionPrompt.innerHTML = 'Use Fermat\'s shortcut! <strong>' + a + '<sup>' + exp + '</sup> mod ' + p + '</strong><br><span style="color:#aaa;font-size:0.9rem">' + p + ' is prime, so ' + a + '<sup>' + (p-1) + '</sup> \u2261 1 (mod ' + p + ')</span>';
+
+        var html = '<div class="mod-exp-steps">';
+        html += '<div class="step">Fermat: ' + a + '<sup>' + (p-1) + '</sup> \u2261 1 (mod ' + p + ')</div>';
+        html += '<div class="step">' + exp + ' = ' + Math.floor(exp / (p - 1)) + ' \u00d7 ' + (p-1) + ' + ' + remainder + '</div>';
+        if (remainder === 0) {
+            html += '<div class="step highlight">' + a + '<sup>' + exp + '</sup> = (1)<sup>' + Math.floor(exp / (p - 1)) + '</sup> = <strong>1</strong></div>';
+        } else {
+            html += '<div class="step">So ' + a + '<sup>' + exp + '</sup> \u2261 ' + a + '<sup>' + remainder + '</sup> (mod ' + p + ')</div>';
+            html += '<div class="step highlight">' + a + '<sup>' + remainder + '</sup> mod ' + p + ' = <strong>' + correctVal + '</strong></div>';
+        }
+        html += '</div>';
+        $questionVisual.innerHTML = html;
+
+        var choices = [correctVal];
+        while (choices.length < 4) {
+            var w = randInt(0, p - 1);
+            if (choices.indexOf(w) === -1) choices.push(w);
+        }
+        shuffle(choices);
+        var btns = '';
+        for (var i = 0; i < choices.length; i++)
+            btns += '<button class="answer-btn" data-val="' + choices[i] + '">' + choices[i] + '</button>';
+        $answerButtons.innerHTML = btns;
+
+        $answerButtons.querySelectorAll('.answer-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var val = parseInt(btn.dataset.val);
+                var correct = val === correctVal;
+                btn.classList.add(correct ? 'correct' : 'wrong');
+                handleAnswer(correct, a + '^' + exp + ' mod ' + p + ' = ' + correctVal + (remainder === 0 ? ' (Fermat: exp is a multiple of p\u22121!)' : ''));
+            });
+        });
+    }
+
+    // Round C: Giant numbers — recognize Fermat shortcut instantly
+    function renderModArithC() {
+        // Pool of problems with huge bases/exponents but prime moduli
+        var problems = [
+            { a: '273246787654', aNum: 273246787654, exp: 65536, mod: 65537, hint: '65537 is prime, 65536 = 65537\u22121' },
+            { a: '999999999999', aNum: 999999999999, exp: 65536, mod: 65537, hint: '65537 is prime, 65536 = 65537\u22121' },
+            { a: '123456789', aNum: 123456789, exp: 30, mod: 31, hint: '31 is prime, 30 = 31\u22121' },
+            { a: '7777777', aNum: 7777777, exp: 36, mod: 37, hint: '37 is prime, 36 = 37\u22121' },
+            { a: '42424242', aNum: 42424242, exp: 100, mod: 101, hint: '101 is prime, 100 = 101\u22121' },
+            { a: '314159265', aNum: 314159265, exp: 112, mod: 113, hint: '113 is prime, 112 = 113\u22121' },
+            { a: '271828182', aNum: 271828182, exp: 1000, mod: 1009, hint: '1009 is prime; 1000 mod 1008 = 1000' }
+        ];
+        var prob = problems[state.questionIndex % problems.length];
+
+        // Compute the actual answer
+        var reducedExp = prob.exp % (prob.mod - 1);
+        var aReduced = ((prob.aNum % prob.mod) + prob.mod) % prob.mod;
+        var correctVal;
+        if (reducedExp === 0) {
+            correctVal = aReduced === 0 ? 0 : 1;
+        } else {
+            correctVal = modPow(aReduced, reducedExp, prob.mod);
+        }
+
+        $questionPrompt.innerHTML = 'What is <strong>' + prob.a + '<sup>' + prob.exp + '</sup> mod ' + prob.mod + '</strong>?<br><span style="color:#aaa;font-size:0.9rem">Hint: ' + prob.hint + '</span>';
+
+        var html = '<div class="mod-exp-steps">';
+        html += '<div class="step">' + prob.mod + ' is prime \u2192 Fermat applies!</div>';
+        html += '<div class="step">a<sup>' + (prob.mod - 1) + '</sup> \u2261 1 (mod ' + prob.mod + ')</div>';
+        html += '<div class="step">' + prob.exp + ' mod ' + (prob.mod - 1) + ' = ' + reducedExp + '</div>';
+        if (reducedExp === 0) {
+            html += '<div class="step highlight">Exponent is a multiple of p\u22121 \u2192 answer = <strong>1</strong></div>';
+        } else {
+            html += '<div class="step">' + prob.a + ' mod ' + prob.mod + ' = ' + aReduced + '</div>';
+            html += '<div class="step highlight">' + aReduced + '<sup>' + reducedExp + '</sup> mod ' + prob.mod + ' = <strong>' + correctVal + '</strong></div>';
+        }
+        html += '</div>';
+        $questionVisual.innerHTML = html;
+
+        var choices = [correctVal];
+        while (choices.length < 4) {
+            var w = randInt(0, prob.mod - 1);
+            if (choices.indexOf(w) === -1) choices.push(w);
+        }
+        shuffle(choices);
+        var btns = '';
+        for (var i = 0; i < choices.length; i++)
+            btns += '<button class="answer-btn" data-val="' + choices[i] + '">' + choices[i] + '</button>';
+        $answerButtons.innerHTML = btns;
+
+        $answerButtons.querySelectorAll('.answer-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var val = parseInt(btn.dataset.val);
+                var correct = val === correctVal;
+                btn.classList.add(correct ? 'correct' : 'wrong');
+                handleAnswer(correct, prob.a + '^' + prob.exp + ' mod ' + prob.mod + ' = ' + correctVal);
+            });
+        });
+    }
+
+    // ═══ LEVEL 13 (NEW): EULER'S TOTIENT FUNCTION ═════════════════════════
+
+    function renderLevelEulerTotient() {
+        if (state.currentRound === 0) renderTotientA();
+        else if (state.currentRound === 1) renderTotientB();
+        else renderTotientC();
+    }
+
+    // Round A: Compute φ(n) for small n by counting coprimes
+    function renderTotientA() {
+        var n = randInt(4, 12);
+        var correctPhi = eulerTotient(n);
+
+        $questionPrompt.innerHTML = 'What is <strong>&phi;(' + n + ')</strong>?<br>Count the numbers from 1 to ' + n + ' that are <strong>coprime</strong> with ' + n + ' (GCD = 1).';
+
+        // Show a grid of 1..n, highlighting coprime numbers
+        var cols = Math.min(n, 6);
+        var html = '<div class="totient-grid" style="grid-template-columns:repeat(' + cols + ', 40px)">';
+        for (var i = 1; i <= n; i++) {
+            var isCoprime = gcd(i, n) === 1;
+            html += '<div class="totient-cell' + (isCoprime ? ' coprime' : ' not-coprime') + '">' + i + '</div>';
+        }
+        html += '</div>';
+        html += '<div style="color:#aaa;margin-top:8px;font-size:0.85rem">Green = coprime with ' + n + ', crossed = shares a factor</div>';
+        $questionVisual.innerHTML = html;
+
+        var choices = [correctPhi];
+        while (choices.length < 4) {
+            var w = correctPhi + randInt(-3, 3);
+            if (w > 0 && w <= n && choices.indexOf(w) === -1) choices.push(w);
+        }
+        shuffle(choices);
+        var btns = '';
+        for (var i = 0; i < choices.length; i++)
+            btns += '<button class="answer-btn" data-val="' + choices[i] + '">' + choices[i] + '</button>';
+        $answerButtons.innerHTML = btns;
+
+        $answerButtons.querySelectorAll('.answer-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var val = parseInt(btn.dataset.val);
+                var correct = val === correctPhi;
+                btn.classList.add(correct ? 'correct' : 'wrong');
+                handleAnswer(correct, '\u03c6(' + n + ') = ' + correctPhi);
+            });
+        });
+    }
+
+    // Round B: φ(p) for primes and φ(p²) for prime powers
+    function renderTotientB() {
+        var primes = [2,3,5,7,11,13];
+        var p = pickRandom(primes);
+        var usePower = Math.random() < 0.4;
+        var n, correctPhi, explanation;
+
+        if (usePower) {
+            n = p * p;
+            correctPhi = n - p; // φ(p²) = p² - p
+            explanation = '\u03c6(' + p + '\u00b2) = ' + p + '\u00b2 \u2212 ' + p + ' = ' + n + ' \u2212 ' + p + ' = ' + correctPhi;
+        } else {
+            n = p;
+            correctPhi = p - 1;
+            explanation = '\u03c6(' + p + ') = ' + p + ' \u2212 1 = ' + correctPhi + ' (all numbers < a prime are coprime with it!)';
+        }
+
+        $questionPrompt.innerHTML = 'What is <strong>&phi;(' + n + ')</strong>?' +
+            (usePower ? '<br>' + n + ' = ' + p + '<sup>2</sup> (a prime power)' : '<br>' + n + ' is prime!');
+        $questionVisual.innerHTML = usePower ?
+            '<div class="rule-display"><div style="color:#3cf0ff;font-weight:700">\u03c6(p<sup>k</sup>) = p<sup>k</sup> \u2212 p<sup>k\u22121</sup></div><div style="color:#ddd;margin-top:8px">For p = ' + p + ', k = 2: \u03c6(' + n + ') = ' + n + ' \u2212 ' + p + ' = ?</div></div>' :
+            '<div class="rule-display"><div style="color:#3cf0ff;font-weight:700">\u03c6(p) = p \u2212 1 for any prime p</div><div style="color:#ddd;margin-top:8px">Every number from 1 to p\u22121 is coprime with a prime!</div></div>';
+
+        var choices = [correctPhi];
+        while (choices.length < 4) {
+            var w = correctPhi + randInt(-4, 4);
+            if (w > 0 && choices.indexOf(w) === -1) choices.push(w);
+        }
+        shuffle(choices);
+        var btns = '';
+        for (var i = 0; i < choices.length; i++)
+            btns += '<button class="answer-btn" data-val="' + choices[i] + '">' + choices[i] + '</button>';
+        $answerButtons.innerHTML = btns;
+
+        $answerButtons.querySelectorAll('.answer-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var val = parseInt(btn.dataset.val);
+                var correct = val === correctPhi;
+                btn.classList.add(correct ? 'correct' : 'wrong');
+                handleAnswer(correct, explanation);
+            });
+        });
+    }
+
+    // Round C: φ(p×q) for semiprimes — bridge to RSA
+    function renderTotientC() {
+        var primes = [3,5,7,11,13];
+        var p = pickRandom(primes);
+        var q = pickRandom(primes.filter(function(x) { return x !== p; }));
+        if (p > q) { var tmp = p; p = q; q = tmp; }
+        var n = p * q;
+        var correctPhi = (p - 1) * (q - 1);
+
+        $questionPrompt.innerHTML = 'What is <strong>&phi;(' + n + ')</strong>?<br>' + n + ' = ' + p + ' &times; ' + q + ' (both prime)';
+
+        $questionVisual.innerHTML = '<div class="rule-display">' +
+            '<div style="color:#3cf0ff;font-weight:700">\u03c6(p \u00d7 q) = (p\u22121)(q\u22121) for distinct primes</div>' +
+            '<div style="color:#ddd;margin-top:8px">\u03c6(' + n + ') = (' + p + '\u22121)(' + q + '\u22121) = ' + (p-1) + ' \u00d7 ' + (q-1) + ' = ?</div>' +
+            '<div style="color:#ffd740;margin-top:12px;font-size:0.85rem">This formula is the key to RSA encryption!</div>' +
+            '</div>';
+
+        var choices = [correctPhi];
+        while (choices.length < 4) {
+            var w = correctPhi + randInt(-6, 6);
+            if (w > 0 && choices.indexOf(w) === -1) choices.push(w);
+        }
+        shuffle(choices);
+        var btns = '';
+        for (var i = 0; i < choices.length; i++)
+            btns += '<button class="answer-btn" data-val="' + choices[i] + '">' + choices[i] + '</button>';
+        $answerButtons.innerHTML = btns;
+
+        $answerButtons.querySelectorAll('.answer-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var val = parseInt(btn.dataset.val);
+                var correct = val === correctPhi;
+                btn.classList.add(correct ? 'correct' : 'wrong');
+                handleAnswer(correct, '\u03c6(' + n + ') = (' + p + '\u22121)(' + q + '\u22121) = ' + (p-1) + ' \u00d7 ' + (q-1) + ' = ' + correctPhi);
+            });
+        });
+    }
+
+    // ═══ LEVEL 19 (NEW): MILLER-RABIN TEST ══════════════════════════════
+
+    function renderLevelMillerRabin() {
+        if (state.currentRound === 0) renderMillerRabinA();
+        else if (state.currentRound === 1) renderMillerRabinB();
+        else renderMillerRabinC();
+    }
+
+    // Round A: Factor n-1 as 2^s × d
+    function renderMillerRabinA() {
+        var pool = [13, 17, 25, 29, 37, 41, 49, 51, 65, 85, 91, 97, 221];
+        var n = pickRandom(pool);
+        var dec = millerRabinDecompose(n);
+        var correctS = dec.s, correctD = dec.d;
+
+        $questionPrompt.innerHTML = 'Decompose <strong>n \u2212 1 = ' + (n-1) + '</strong> as 2<sup>s</sup> \u00d7 d where d is odd.<br>What are <strong>s</strong> and <strong>d</strong>?';
+
+        // Show the factoring process
+        var temp = n - 1, steps = [];
+        while (temp % 2 === 0) {
+            steps.push(temp + ' \u00f7 2 = ' + (temp / 2));
+            temp = Math.floor(temp / 2);
+        }
+
+        var html = '<div class="mod-exp-steps">';
+        html += '<div class="step">n \u2212 1 = ' + (n-1) + '</div>';
+        for (var i = 0; i < steps.length; i++)
+            html += '<div class="step">' + steps[i] + '</div>';
+        html += '<div class="result-line">' + (n-1) + ' = 2<sup>' + correctS + '</sup> \u00d7 ' + correctD + '</div>';
+        html += '</div>';
+        $questionVisual.innerHTML = html;
+
+        // Ask for s
+        var sChoices = [correctS];
+        while (sChoices.length < 4) {
+            var w = randInt(0, 6);
+            if (sChoices.indexOf(w) === -1) sChoices.push(w);
+        }
+        shuffle(sChoices);
+
+        $answerButtons.innerHTML = '<div style="margin-bottom:8px;color:#aaa">What is s (power of 2)?</div>';
+        var btns = '';
+        for (var i = 0; i < sChoices.length; i++)
+            btns += '<button class="answer-btn mr-step1" data-val="' + sChoices[i] + '">s = ' + sChoices[i] + '</button>';
+        $answerButtons.innerHTML += btns;
+
+        $answerButtons.querySelectorAll('.mr-step1').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                if (!state.questionActive) return;
+                var val = parseInt(btn.dataset.val);
+                if (val !== correctS) {
+                    btn.classList.add('wrong');
+                    handleAnswer(false, (n-1) + ' = 2^' + correctS + ' \u00d7 ' + correctD + ', so s = ' + correctS);
+                    return;
+                }
+                btn.classList.add('correct');
+                sndTick();
+                // Now ask for d
+                setTimeout(function() {
+                    var dChoices = [correctD];
+                    while (dChoices.length < 4) {
+                        var w2 = randInt(1, correctD * 2) | 1; // odd only
+                        if (dChoices.indexOf(w2) === -1) dChoices.push(w2);
+                    }
+                    shuffle(dChoices);
+                    $answerButtons.innerHTML = '<div style="margin-bottom:8px;color:#aaa">What is d (odd part)?</div>';
+                    var btns2 = '';
+                    for (var i = 0; i < dChoices.length; i++)
+                        btns2 += '<button class="answer-btn mr-step2" data-val="' + dChoices[i] + '">d = ' + dChoices[i] + '</button>';
+                    $answerButtons.innerHTML += btns2;
+
+                    $answerButtons.querySelectorAll('.mr-step2').forEach(function(btn2) {
+                        btn2.addEventListener('click', function() {
+                            var v = parseInt(btn2.dataset.val);
+                            var correct = v === correctD;
+                            btn2.classList.add(correct ? 'correct' : 'wrong');
+                            handleAnswer(correct, (n-1) + ' = 2^' + correctS + ' \u00d7 ' + correctD);
+                        });
+                    });
+                }, 600);
+            });
+        });
+    }
+
+    // Round B: Walk through the squaring sequence
+    function renderMillerRabinB() {
+        var primePool = [13, 17, 29, 37, 41, 53, 61, 97];
+        var compositePool = [25, 49, 51, 65, 91, 221, 341];
+        var n = Math.random() < 0.5 ? pickRandom(primePool) : pickRandom(compositePool);
+        var bases = [2, 3, 5, 7];
+        var a = pickRandom(bases.filter(function(x) { return x < n; }));
+        var result = millerRabinTest(n, a);
+        var isPrime = trialDivision(n);
+
+        $questionPrompt.innerHTML = 'Miller-Rabin test: n = <strong>' + n + '</strong>, base a = <strong>' + a + '</strong>.<br>Watch the squaring sequence and decide: prime or composite?';
+
+        var dec = millerRabinDecompose(n);
+        var html = '<div class="mod-exp-steps">';
+        html += '<div class="step">n\u22121 = ' + (n-1) + ' = 2<sup>' + dec.s + '</sup> \u00d7 ' + dec.d + '</div>';
+        for (var i = 0; i < result.steps.length; i++) {
+            var s = result.steps[i];
+            var isLast = i === result.steps.length - 1;
+            html += '<div class="step' + (isLast ? ' highlight' : '') + '">' + s.desc + '</div>';
+        }
+        var lastVal = result.steps[result.steps.length - 1].val;
+        html += '<div class="result-line">Miller-Rabin says: ' + (result.isProbablePrime ? 'probably prime' : 'COMPOSITE') + '</div>';
+        html += '</div>';
+        $questionVisual.innerHTML = html;
+
+        $answerButtons.innerHTML =
+            '<button class="answer-btn" data-val="prime">PRIME</button>' +
+            '<button class="answer-btn" data-val="composite">COMPOSITE</button>';
+
+        $answerButtons.querySelectorAll('.answer-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var ans = btn.dataset.val;
+                var correct = (ans === 'prime') === isPrime;
+                btn.classList.add(correct ? 'correct' : 'wrong');
+                var msg = n + ' is ' + (isPrime ? 'PRIME' : 'COMPOSITE') + '. Miller-Rabin (base ' + a + '): ' + (result.isProbablePrime ? 'probably prime' : 'composite');
+                if (!isPrime && result.isProbablePrime) msg += ' \u2014 base ' + a + ' is a LIAR!';
+                handleAnswer(correct, msg);
+            });
+        });
+    }
+
+    // Round C: Full test with given n and base a
+    function renderMillerRabinC() {
+        var pool = [221, 341, 561, 25, 49, 169, 289, 127, 131, 137, 149, 157];
+        var n = pickRandom(pool);
+        var a = pickRandom([2, 3, 5, 7].filter(function(x) { return x < n && gcd(x, n) === 1; }));
+        var isPrime = trialDivision(n);
+        var dec = millerRabinDecompose(n);
+        var result = millerRabinTest(n, a);
+
+        $questionPrompt.innerHTML = 'Full Miller-Rabin: Is <strong>' + n + '</strong> prime?<br>Test with base a = ' + a + '. n\u22121 = ' + (n-1) + ' = 2<sup>' + dec.s + '</sup> \u00d7 ' + dec.d;
+
+        var html = '<div class="mod-exp-steps">';
+        for (var i = 0; i < result.steps.length; i++) {
+            html += '<div class="step' + (i === result.steps.length - 1 ? ' highlight' : '') + '">' + result.steps[i].desc + '</div>';
+        }
+        html += '</div>';
+        $questionVisual.innerHTML = html;
+
+        $answerButtons.innerHTML =
+            '<button class="answer-btn" data-val="prime">PRIME</button>' +
+            '<button class="answer-btn" data-val="composite">COMPOSITE</button>';
+
+        $answerButtons.querySelectorAll('.answer-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var ans = btn.dataset.val;
+                var correct = (ans === 'prime') === isPrime;
+                btn.classList.add(correct ? 'correct' : 'wrong');
+                handleAnswer(correct, n + ' is ' + (isPrime ? 'PRIME' : 'COMPOSITE'));
+            });
+        });
+    }
+
+    // ═══ LEVEL 20 (NEW): RSA BASICS ═════════════════════════════════════
+
+    function renderLevelRSA() {
+        if (state.currentRound === 0) renderRSA_A();
+        else if (state.currentRound === 1) renderRSA_B();
+        else renderRSA_C();
+    }
+
+    // Round A: Given p,q → compute n and φ(n), pick valid e
+    function renderRSA_A() {
+        var primePairs = [[3,11],[3,7],[5,7],[5,11],[7,11],[3,13],[5,13]];
+        var pair = pickRandom(primePairs);
+        var p = pair[0], q = pair[1];
+        var n = p * q;
+        var phi = (p - 1) * (q - 1);
+
+        // Find valid e values (coprime to phi)
+        var validEs = [];
+        for (var e = 2; e < phi; e++) {
+            if (gcd(e, phi) === 1) validEs.push(e);
+            if (validEs.length >= 6) break;
+        }
+        var correctE = pickRandom(validEs.slice(0, 4));
+
+        $questionPrompt.innerHTML = 'RSA Setup: p = <strong>' + p + '</strong>, q = <strong>' + q + '</strong>';
+
+        var html = '<div class="rsa-steps">';
+        html += '<div class="rsa-step done">Step 1: n = p \u00d7 q = ' + p + ' \u00d7 ' + q + ' = <strong>' + n + '</strong></div>';
+        html += '<div class="rsa-step done">Step 2: \u03c6(n) = (p\u22121)(q\u22121) = ' + (p-1) + ' \u00d7 ' + (q-1) + ' = <strong>' + phi + '</strong></div>';
+        html += '<div class="rsa-step active">Step 3: Pick e coprime to \u03c6(n) = ' + phi + '</div>';
+        html += '</div>';
+        $questionVisual.innerHTML = html;
+
+        // Offer 4 choices, some coprime some not
+        var eChoices = [correctE];
+        var nonCoprimes = [];
+        for (var i = 2; i < phi; i++) {
+            if (gcd(i, phi) > 1) nonCoprimes.push(i);
+            if (nonCoprimes.length >= 6) break;
+        }
+        while (eChoices.length < 4) {
+            var candidate = Math.random() < 0.5 ? pickRandom(nonCoprimes) : pickRandom(validEs);
+            if (eChoices.indexOf(candidate) === -1) eChoices.push(candidate);
+        }
+        shuffle(eChoices);
+
+        var btns = '<div style="margin-bottom:8px;color:#aaa">Which e is coprime to ' + phi + '?</div>';
+        for (var i = 0; i < eChoices.length; i++) {
+            var eVal = eChoices[i];
+            var g = gcd(eVal, phi);
+            btns += '<button class="answer-btn rsa-e-btn" data-val="' + eVal + '">e = ' + eVal + ' (GCD=' + g + ')</button>';
+        }
+        $answerButtons.innerHTML = btns;
+
+        $answerButtons.querySelectorAll('.rsa-e-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var val = parseInt(btn.dataset.val);
+                var isValid = gcd(val, phi) === 1;
+                btn.classList.add(isValid ? 'correct' : 'wrong');
+                handleAnswer(isValid, isValid ? 'e = ' + val + ' works! GCD(' + val + ', ' + phi + ') = 1' : 'GCD(' + val + ', ' + phi + ') = ' + gcd(val, phi) + ' \u2260 1. Try e = ' + correctE);
+            });
+        });
+    }
+
+    // Round B: Given e and φ(n) → find d, encrypt a message
+    function renderRSA_B() {
+        var primePairs = [[3,11],[5,7],[3,7],[5,11]];
+        var pair = pickRandom(primePairs);
+        var p = pair[0], q = pair[1];
+        var n = p * q;
+        var phi = (p - 1) * (q - 1);
+
+        // Pick a valid e
+        var e = 3;
+        while (gcd(e, phi) !== 1) e += 2;
+        var d = modInverse(e, phi);
+        var m = randInt(2, n - 2); // message
+        var c = modPow(m, e, n);
+
+        $questionPrompt.innerHTML = 'RSA: n = ' + n + ', \u03c6(n) = ' + phi + ', e = ' + e + '<br>Find the private key d where e \u00d7 d \u2261 1 (mod \u03c6(n))';
+
+        var html = '<div class="rsa-steps">';
+        html += '<div class="rsa-step done">n = ' + n + ' = ' + p + ' \u00d7 ' + q + '</div>';
+        html += '<div class="rsa-step done">\u03c6(n) = ' + phi + '</div>';
+        html += '<div class="rsa-step done">e = ' + e + '</div>';
+        html += '<div class="rsa-step active">Find d: ' + e + ' \u00d7 d \u2261 1 (mod ' + phi + ')</div>';
+        html += '</div>';
+        $questionVisual.innerHTML = html;
+
+        var dChoices = [d];
+        while (dChoices.length < 4) {
+            var w = randInt(2, phi - 1);
+            if (dChoices.indexOf(w) === -1) dChoices.push(w);
+        }
+        shuffle(dChoices);
+        var btns = '';
+        for (var i = 0; i < dChoices.length; i++) {
+            var dv = dChoices[i];
+            var product = (e * dv) % phi;
+            btns += '<button class="answer-btn rsa-d-btn" data-val="' + dv + '">d = ' + dv + ' (' + e + '\u00d7' + dv + ' mod ' + phi + ' = ' + product + ')</button>';
+        }
+        $answerButtons.innerHTML = btns;
+
+        $answerButtons.querySelectorAll('.rsa-d-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                if (!state.questionActive) return;
+                var val = parseInt(btn.dataset.val);
+                var correct = val === d;
+                btn.classList.add(correct ? 'correct' : 'wrong');
+                if (!correct) {
+                    handleAnswer(false, e + ' \u00d7 ' + d + ' = ' + (e * d) + ' \u2261 ' + ((e * d) % phi) + ' (mod ' + phi + '). d = ' + d);
+                    return;
+                }
+                sndTick();
+                // Step 2: encrypt
+                setTimeout(function() {
+                    $questionPrompt.innerHTML = 'Now encrypt message m = <strong>' + m + '</strong> using public key (e=' + e + ', n=' + n + ')';
+                    $questionVisual.innerHTML = '<div class="rsa-key-display">c = m<sup>e</sup> mod n = ' + m + '<sup>' + e + '</sup> mod ' + n + ' = ?</div>';
+                    var cChoices = [c];
+                    while (cChoices.length < 4) {
+                        var w2 = randInt(0, n - 1);
+                        if (cChoices.indexOf(w2) === -1) cChoices.push(w2);
+                    }
+                    shuffle(cChoices);
+                    var btns2 = '';
+                    for (var i = 0; i < cChoices.length; i++)
+                        btns2 += '<button class="answer-btn rsa-c-btn" data-val="' + cChoices[i] + '">' + cChoices[i] + '</button>';
+                    $answerButtons.innerHTML = btns2;
+
+                    $answerButtons.querySelectorAll('.rsa-c-btn').forEach(function(btn2) {
+                        btn2.addEventListener('click', function() {
+                            var v = parseInt(btn2.dataset.val);
+                            var ok = v === c;
+                            btn2.classList.add(ok ? 'correct' : 'wrong');
+                            handleAnswer(ok, m + '^' + e + ' mod ' + n + ' = ' + c);
+                        });
+                    });
+                }, 600);
+            });
+        });
+    }
+
+    // Round C: Full RSA workflow
+    function renderRSA_C() {
+        var primePairs = [[3,11],[5,7],[3,7],[5,11],[3,13],[7,11]];
+        var pair = pickRandom(primePairs);
+        var p = pair[0], q = pair[1];
+        var n = p * q;
+        var phi = (p - 1) * (q - 1);
+        var e = 3;
+        while (gcd(e, phi) !== 1) e += 2;
+        var d = modInverse(e, phi);
+        var m = randInt(2, Math.min(n - 2, 20));
+        var c = modPow(m, e, n);
+        var decrypted = modPow(c, d, n);
+
+        $questionPrompt.innerHTML = 'Full RSA: p = ' + p + ', q = ' + q + '. Encrypt m = ' + m + ' and decrypt it back.';
+
+        var html = '<div class="rsa-steps">';
+        html += '<div class="rsa-step done">n = ' + p + ' \u00d7 ' + q + ' = ' + n + '</div>';
+        html += '<div class="rsa-step done">\u03c6(n) = ' + (p-1) + ' \u00d7 ' + (q-1) + ' = ' + phi + '</div>';
+        html += '<div class="rsa-step done">e = ' + e + ', d = ' + d + '</div>';
+        html += '<div class="rsa-step done">Encrypt: ' + m + '<sup>' + e + '</sup> mod ' + n + ' = ' + c + '</div>';
+        html += '<div class="rsa-step active">Decrypt: ' + c + '<sup>' + d + '</sup> mod ' + n + ' = ?</div>';
+        html += '</div>';
+        $questionVisual.innerHTML = html;
+
+        var choices = [decrypted];
+        while (choices.length < 4) {
+            var w = randInt(0, n - 1);
+            if (choices.indexOf(w) === -1) choices.push(w);
+        }
+        shuffle(choices);
+        var btns = '';
+        for (var i = 0; i < choices.length; i++)
+            btns += '<button class="answer-btn" data-val="' + choices[i] + '">' + choices[i] + '</button>';
+        $answerButtons.innerHTML = btns;
+
+        $answerButtons.querySelectorAll('.answer-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var val = parseInt(btn.dataset.val);
+                var correct = val === decrypted;
+                btn.classList.add(correct ? 'correct' : 'wrong');
+                handleAnswer(correct, c + '^' + d + ' mod ' + n + ' = ' + decrypted + (decrypted === m ? ' = m \u2714 Decryption works!' : ''));
+            });
+        });
+    }
+
+    // ═══ LEVEL 21: BONUS — MERSENNE PRIMES ═══════════════════════════════
 
     var MERSENNE_PRIMES = [2,3,5,7,13,17,19,31]; // exponents that give Mersenne primes
 

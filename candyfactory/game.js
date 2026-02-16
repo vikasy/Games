@@ -386,9 +386,10 @@ function continueAfterOpen(idx, autoOpened = false) {
         stopPickTimer();
         if (pickTimerEl) pickTimerEl.textContent = '';
         const prefix = auto
-            ? `Time's up! Candy box #${idx + 1} was chosen for you.`
-            : `Your candy box is #${idx + 1}.`;
-        statusEl.textContent = `${prefix} Open ${casesToOpenThisRound} candy boxes.`;
+            ? `Time's up! Candy box <span class="status-hl">#${idx + 1}</span> was chosen for you.`
+            : `Your candy box is <span class="status-hl">#${idx + 1}</span>.`;
+        statusEl.innerHTML = `${prefix} Open <span class="status-hl">${casesToOpenThisRound}</span> candy boxes.`;
+        statusEl.classList.add('status-action');
         roundInfoEl.textContent = `Round ${currentRound} — ${casesToOpenThisRound - casesOpenedThisRound} to open`;
         restartOpeningTimer();
     }
@@ -503,7 +504,8 @@ function autoOpenCase() {
             casesToOpenThisRound = NCASE_TO_OPEN[currentRound - 1] || 0;
             casesOpenedThisRound = 0;
             stage = 'opening';
-            statusEl.textContent = `Keep! Round ${currentRound} — Open ${casesToOpenThisRound} box${casesToOpenThisRound > 1 ? 'es' : ''}.`;
+            statusEl.innerHTML = `Keep! Round <span class="status-hl">${currentRound}</span> — Open <span class="status-hl">${casesToOpenThisRound}</span> box${casesToOpenThisRound > 1 ? 'es' : ''}.`;
+            statusEl.classList.add('status-action');
             roundInfoEl.textContent = `Round ${currentRound} — ${casesToOpenThisRound} to open`;
             restartOpeningTimer();
         } else if (offerMode === 'swap') {
@@ -608,6 +610,7 @@ function autoOpenCase() {
         const clamped = Math.min(Math.max(value, POINTER_MIN_EV), POINTER_MAX_EV);
         const ratio = calcEVRatio(clamped);
         evPointerEl.style.left = `${(ratio * 100).toFixed(2)}%`;
+        evPointerEl.dataset.ev = Math.round(value).toLocaleString();
     }
 
     function updateOfferMarkers() {
@@ -794,7 +797,7 @@ function appendProbHistory(entry) {
     }
 
     function formatCandies(val) {
-        return `${val.toLocaleString()} candies`;
+        return `${val.toLocaleString()} ${val === 1 ? 'candy' : 'candies'}`;
     }
 
     function getRemainingClosed() {

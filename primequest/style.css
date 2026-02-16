@@ -95,6 +95,19 @@ header h1.title-glow {
     margin: 14px 0;
     box-shadow: 0 4px 16px rgba(0,0,0,0.3);
 }
+.hud-back {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    color: #8ca0cc;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    margin-right: auto;
+}
+.hud-back:hover { background: rgba(255,255,255,0.15); color: #fff; }
 .hud-item { text-align: center; }
 .hud-label {
     display: block;
@@ -196,23 +209,30 @@ header h1.title-glow {
     border-color: rgba(124,255,107,0.3);
 }
 
-/* Per-level accent colors — bright candy palette (16 levels) */
+/* Per-level accent colors — bright candy palette (23 levels) */
 .level-card:nth-child(1)  { --card-accent: #7cff6b; --card-glow: rgba(124,255,107,0.3); }
-.level-card:nth-child(2)  { --card-accent: #3cf0ff; --card-glow: rgba(60,240,255,0.3); }
-.level-card:nth-child(3)  { --card-accent: #ffd740; --card-glow: rgba(255,215,64,0.3); }
-.level-card:nth-child(4)  { --card-accent: #ff6ec7; --card-glow: rgba(255,110,199,0.3); }
-.level-card:nth-child(5)  { --card-accent: #ff8a50; --card-glow: rgba(255,138,80,0.3); }
-.level-card:nth-child(6)  { --card-accent: #64b5f6; --card-glow: rgba(100,181,246,0.3); }
-.level-card:nth-child(7)  { --card-accent: #80cbc4; --card-glow: rgba(128,203,196,0.3); }
-.level-card:nth-child(8)  { --card-accent: #ea80fc; --card-glow: rgba(234,128,252,0.3); }
-.level-card:nth-child(9)  { --card-accent: #ff5252; --card-glow: rgba(255,82,82,0.3); }
-.level-card:nth-child(10) { --card-accent: #b388ff; --card-glow: rgba(179,136,255,0.3); }
-.level-card:nth-child(11) { --card-accent: #69f0ae; --card-glow: rgba(105,240,174,0.3); }
-.level-card:nth-child(12) { --card-accent: #ffab40; --card-glow: rgba(255,171,64,0.3); }
-.level-card:nth-child(13) { --card-accent: #40c4ff; --card-glow: rgba(64,196,255,0.3); }
-.level-card:nth-child(14) { --card-accent: #ff80ab; --card-glow: rgba(255,128,171,0.3); }
-.level-card:nth-child(15) { --card-accent: #ffd740; --card-glow: rgba(255,215,64,0.4); }
-.level-card:nth-child(16) { --card-accent: #e040fb; --card-glow: rgba(224,64,251,0.4); }
+.level-card:nth-child(2)  { --card-accent: #82e0ff; --card-glow: rgba(130,224,255,0.3); }
+.level-card:nth-child(3)  { --card-accent: #ffcc40; --card-glow: rgba(255,204,64,0.3); }
+.level-card:nth-child(4)  { --card-accent: #3cf0ff; --card-glow: rgba(60,240,255,0.3); }
+.level-card:nth-child(5)  { --card-accent: #a5d6a7; --card-glow: rgba(165,214,167,0.3); }
+.level-card:nth-child(6)  { --card-accent: #ffd740; --card-glow: rgba(255,215,64,0.3); }
+.level-card:nth-child(7)  { --card-accent: #ff6ec7; --card-glow: rgba(255,110,199,0.3); }
+.level-card:nth-child(8)  { --card-accent: #ff8a50; --card-glow: rgba(255,138,80,0.3); }
+.level-card:nth-child(9)  { --card-accent: #64b5f6; --card-glow: rgba(100,181,246,0.3); }
+.level-card:nth-child(10) { --card-accent: #80cbc4; --card-glow: rgba(128,203,196,0.3); }
+.level-card:nth-child(11) { --card-accent: #ea80fc; --card-glow: rgba(234,128,252,0.3); }
+.level-card:nth-child(12) { --card-accent: #ff5252; --card-glow: rgba(255,82,82,0.3); }
+.level-card:nth-child(13) { --card-accent: #f4ff81; --card-glow: rgba(244,255,129,0.3); }
+.level-card:nth-child(14) { --card-accent: #b9f6ca; --card-glow: rgba(185,246,202,0.3); }
+.level-card:nth-child(15) { --card-accent: #b388ff; --card-glow: rgba(179,136,255,0.3); }
+.level-card:nth-child(16) { --card-accent: #69f0ae; --card-glow: rgba(105,240,174,0.3); }
+.level-card:nth-child(17) { --card-accent: #ffab40; --card-glow: rgba(255,171,64,0.3); }
+.level-card:nth-child(18) { --card-accent: #40c4ff; --card-glow: rgba(64,196,255,0.3); }
+.level-card:nth-child(19) { --card-accent: #ff80ab; --card-glow: rgba(255,128,171,0.3); }
+.level-card:nth-child(20) { --card-accent: #ffd740; --card-glow: rgba(255,215,64,0.4); }
+.level-card:nth-child(21) { --card-accent: #ff6e40; --card-glow: rgba(255,110,64,0.3); }
+.level-card:nth-child(22) { --card-accent: #e040fb; --card-glow: rgba(224,64,251,0.4); }
+.level-card:nth-child(23) { --card-accent: #76ff03; --card-glow: rgba(118,255,3,0.4); }
 
 .level-num {
     font-size: 2.4rem;
@@ -1203,6 +1223,164 @@ header h1.title-glow {
     padding: 8px 14px;
     font-size: 0.9rem;
     color: #ccc;
+}
+
+/* ─── Multiplication Grid (Level 1) ────────────────────── */
+
+.mult-grid {
+    display: grid;
+    gap: 2px;
+    margin: 14px auto;
+    max-width: 400px;
+}
+.mult-cell {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+.mult-cell.header {
+    background: rgba(60,240,255,0.1);
+    color: #3cf0ff;
+}
+.mult-cell.highlight {
+    background: rgba(255,215,64,0.15);
+    border: 2px solid #ffd740;
+    color: #ffd740;
+}
+.mult-cell.product {
+    background: rgba(124,255,107,0.1);
+    color: #7cff6b;
+}
+
+/* ─── Divisibility Rule Display (Level 2) ──────────────── */
+
+.rule-display {
+    background: rgba(0,0,0,0.25);
+    border: 2px solid rgba(255,255,255,0.08);
+    border-radius: 14px;
+    padding: 16px 20px;
+    margin: 14px auto;
+    max-width: 460px;
+    text-align: left;
+}
+.digit-highlight {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-weight: 800;
+    font-size: 1.1rem;
+    margin: 0 2px;
+}
+.digit-highlight.even {
+    background: rgba(124,255,107,0.15);
+    color: #7cff6b;
+}
+.digit-highlight.sum {
+    background: rgba(255,215,64,0.15);
+    color: #ffd740;
+}
+
+/* ─── Factor Pairs (Level 4) ───────────────────────────── */
+
+.factor-pairs {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 14px auto;
+    max-width: 400px;
+}
+.factor-pair {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    padding: 8px;
+    border-radius: 10px;
+    background: rgba(0,0,0,0.2);
+    border: 1px solid rgba(255,255,255,0.08);
+}
+.factor-pair.found {
+    border-color: rgba(124,255,107,0.3);
+    background: rgba(124,255,107,0.08);
+}
+
+/* ─── Totient Grid (Level 12) ──────────────────────────── */
+
+.totient-grid {
+    display: grid;
+    gap: 4px;
+    justify-content: center;
+    margin: 14px auto;
+}
+.totient-cell {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border: 2px solid rgba(255,255,255,0.1);
+    background: linear-gradient(145deg, #2a1860, #1e2a6a);
+    color: #e8e8e8;
+}
+.totient-cell.coprime {
+    border-color: rgba(124,255,107,0.3);
+    background: rgba(124,255,107,0.08);
+    color: #7cff6b;
+}
+.totient-cell.not-coprime {
+    border-color: rgba(255,82,82,0.2);
+    opacity: 0.4;
+    text-decoration: line-through;
+    color: #ff8a80;
+}
+
+/* ─── RSA Workflow (Level 20) ──────────────────────────── */
+
+.rsa-steps {
+    text-align: left;
+    background: rgba(0,0,0,0.25);
+    border: 2px solid rgba(224,64,251,0.15);
+    border-radius: 14px;
+    padding: 16px 20px;
+    margin: 14px auto;
+    max-width: 480px;
+}
+.rsa-step {
+    padding: 10px 12px;
+    margin: 4px 0;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: #ccc;
+}
+.rsa-step.done {
+    color: #7cff6b;
+    opacity: 0.7;
+}
+.rsa-step.active {
+    background: rgba(224,64,251,0.08);
+    border: 1px solid rgba(224,64,251,0.2);
+    color: #ea80fc;
+    font-weight: 700;
+}
+.rsa-key-display {
+    font-family: 'Courier New', monospace;
+    font-size: 1rem;
+    color: #e040fb;
+    background: rgba(224,64,251,0.06);
+    border: 2px solid rgba(224,64,251,0.2);
+    border-radius: 12px;
+    padding: 14px;
+    margin: 10px auto;
+    max-width: 380px;
+    text-align: center;
 }
 
 /* ─── Responsive ────────────────────────────────────────── */
