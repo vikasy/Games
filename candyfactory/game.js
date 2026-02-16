@@ -3,6 +3,7 @@
 // Ported from candyfactory.cpp by Vikas Yadav
 
 (function () {
+    const pName = typeof getActivePlayer === 'function' ? getActivePlayer() : 'You';
     const CASE_MONIES = [
         1, 2, 4, 6, 8,
         10, 20, 40, 60, 80,
@@ -418,8 +419,8 @@ function continueAfterOpen(idx, autoOpened = false) {
         stopPickTimer();
         if (pickTimerEl) pickTimerEl.textContent = '';
         const prefix = auto
-            ? `Time's up! Candy box <span class="status-hl">#${idx + 1}</span> was chosen for you.`
-            : `Your candy box is <span class="status-hl">#${idx + 1}</span>.`;
+            ? `Time's up! Candy box <span class="status-hl">#${idx + 1}</span> was chosen for ${pName}.`
+            : `${pName}'s candy box is <span class="status-hl">#${idx + 1}</span>.`;
         statusEl.innerHTML = `${prefix} Open <span class="status-hl">${casesToOpenThisRound}</span> candy boxes.`;
         statusEl.classList.add('status-action');
         roundInfoEl.textContent = `Round ${currentRound} — ${casesToOpenThisRound - casesOpenedThisRound} to open`;
@@ -577,10 +578,10 @@ function autoOpenCase() {
         setTimeout(() => { isGoodOutcome ? sndWin() : sndLose(); }, 400);
 
         if (isDeal) {
-            statusEl.textContent = `TRADE! You accepted ${formatCandies(offer)} candies! (Your box had ${formatCandies(playerMoney)})`;
+            statusEl.textContent = `TRADE! ${pName} accepted ${formatCandies(offer)} candies! (${pName}'s box had ${formatCandies(playerMoney)})`;
         } else {
             const tail = otherValue !== null ? ` (other box had ${formatCandies(otherValue)})` : '';
-            statusEl.textContent = `You kept candy box #${playerCase + 1} and won ${formatCandies(playerMoney)}!${tail}`;
+            statusEl.textContent = `${pName} kept candy box #${playerCase + 1} and won ${formatCandies(playerMoney)}!${tail}`;
         }
         roundInfoEl.textContent = 'Game over. Press New Game to play again.';
 
@@ -759,7 +760,7 @@ function autoOpenCase() {
     function historyDetails(entry) {
         const bits = [`Won ${formatCandies(entry.candiesWon)}`];
         if (entry.decision === 'accept') {
-            bits.push(`Your box had ${formatCandies(entry.yourBox)}`);
+            bits.push(`${pName}'s box had ${formatCandies(entry.yourBox)}`);
         } else {
             if (entry.otherValue !== null && entry.otherValue !== undefined) {
                 bits.push(`Other box ${formatCandies(entry.otherValue)}`);
@@ -1236,7 +1237,7 @@ function showPostOpenChallenge(idx, remainingToOpen, autoOpened = false) {
         const pct = Math.round((mathScore.correct / mathScore.total) * 100);
         const correctDisplay = formatScoreValue(mathScore.correct);
         const q = `<div style="font-size:1.3rem;margin-bottom:10px;">Game Over!</div>` +
-            `You got <strong>${correctDisplay}</strong> out of <strong>${mathScore.total}</strong> math challenges right!<br>` +
+            `${pName} got <strong>${correctDisplay}</strong> out of <strong>${mathScore.total}</strong> math challenges right!<br>` +
             `That's <strong>${pct}%</strong> accuracy.` +
             (pct >= 80 ? '<br><br>Amazing math skills!' :
                 pct >= 50 ? '<br><br>Good effort! Keep practicing!' :

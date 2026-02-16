@@ -58,7 +58,6 @@
         }
         .profile-bar button:hover { background: #1a2a50; }
         .profile-bar .scores-btn { color: #7dffb3; }
-        .profile-bar .remove-btn { color: #f87171; font-size: 0.8rem; }
 
         .games {
             display: flex;
@@ -163,7 +162,6 @@
         <label>Playing as:</label>
         <select id="profile-select"></select>
         <button id="add-profile-btn">+ New</button>
-        <button id="remove-profile-btn" class="remove-btn" title="Remove current profile">x</button>
         <button id="scores-btn" class="scores-btn">Scores</button>
     </div>
 
@@ -201,10 +199,10 @@
                 <thead>
                     <tr>
                         <th>Player</th>
+                        <th>TTT W/D/L</th>
+                        <th>Poker W/H</th>
+                        <th>Candy/Games</th>
                         <th>PQ Stars</th>
-                        <th>PQ Levels</th>
-                        <th>CF Games</th>
-                        <th>CF Candies</th>
                     </tr>
                 </thead>
                 <tbody id="lb-body"></tbody>
@@ -220,7 +218,6 @@
     (function () {
         var sel = document.getElementById('profile-select');
         var addBtn = document.getElementById('add-profile-btn');
-        var removeBtn = document.getElementById('remove-profile-btn');
         var scoresBtn = document.getElementById('scores-btn');
         var overlay = document.getElementById('lb-overlay');
         var lbBody = document.getElementById('lb-body');
@@ -255,30 +252,18 @@
             }
         });
 
-        removeBtn.addEventListener('click', function () {
-            var profiles = getProfiles();
-            if (profiles.length <= 1) {
-                alert('Cannot remove the last profile.');
-                return;
-            }
-            var active = getActivePlayer();
-            if (confirm('Remove profile "' + active + '" and all saved data?')) {
-                removeProfile(active);
-                refreshDropdown();
-            }
-        });
-
         scoresBtn.addEventListener('click', function () {
             var data = getLeaderboardData();
             lbBody.innerHTML = '';
             data.forEach(function (row) {
                 var tr = document.createElement('tr');
+                var candyPerGame = row.cfGames ? Math.round(row.cfCandies / row.cfGames).toLocaleString() : '0';
                 tr.innerHTML =
                     '<td>' + row.name + '</td>' +
-                    '<td>' + row.pqStars + ' / 69</td>' +
-                    '<td>' + row.pqCompleted + ' / 23</td>' +
-                    '<td>' + row.cfGames + '</td>' +
-                    '<td>' + row.cfCandies.toLocaleString() + '</td>';
+                    '<td>' + row.tttW + '/' + row.tttD + '/' + row.tttL + '</td>' +
+                    '<td>' + row.pkWins + '/' + row.pkHands + '</td>' +
+                    '<td>' + candyPerGame + '/' + row.cfGames + '</td>' +
+                    '<td>' + row.pqStars + '/69</td>';
                 lbBody.appendChild(tr);
             });
             overlay.classList.add('open');

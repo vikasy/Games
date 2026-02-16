@@ -3,11 +3,17 @@
 // Ported from TicTacToe.c by Vikas Yadav
 
 (function () {
+    const pName = typeof getActivePlayer === 'function' ? getActivePlayer() : 'You';
     let DIM = 3;
     let board = [];      // 2D array: 0=empty, 'X', 'O'
     let currentPlayer;   // 'X' or 'O'
     let gameOver;
-    let scores = { X: 0, O: 0, D: 0 };
+    let scores = (function () {
+        if (typeof gameGet === 'function') {
+            try { var s = gameGet('ttt_scores'); if (s) return JSON.parse(s); } catch(e) {}
+        }
+        return { X: 0, O: 0, D: 0 };
+    })();
     let gameCounter = 0;
     let boardHistory = [];
     let moveHistory = [];
@@ -104,7 +110,7 @@
         statusEl.className = '';
         boardEl.className = '';
         if (currentPlayer === 'X') {
-            statusEl.textContent = "Your turn (X)";
+            statusEl.textContent = pName + "'s turn (X)";
         } else if (playAsComputer && DIM === 3 && aiAlgorithm === 'minimax') {
             waitingForKidO = true;
             statusEl.textContent = "🎯 Computer goes first — pick O's opening move!";
@@ -170,7 +176,7 @@
 
             if (!gameOver) {
                 currentPlayer = 'X';
-                statusEl.textContent = "Your turn (X)";
+                statusEl.textContent = pName + "'s turn (X)";
                 startTimer('X');
             }
             return;
@@ -204,10 +210,10 @@
             const winner = mark;
             scores[winner]++;
             updateScores();
-            statusEl.textContent = winner === 'X' ? "You win!" : "Computer wins!";
+            statusEl.textContent = winner === 'X' ? pName + " wins!" : "Computer wins!";
             gameOver = true;
             stopTimer();
-            recordBoard(winner === 'X' ? 'You won!' : 'Computer won!', result);
+            recordBoard(winner === 'X' ? pName + ' won!' : 'Computer won!', result);
             // Apply animations after a frame so browser registers initial state
             requestAnimationFrame(() => {
                 highlightWin(result, mark);
@@ -260,7 +266,7 @@
             makeMove(move[0], move[1], 'O');
             if (!gameOver) {
                 currentPlayer = 'X';
-                statusEl.textContent = "Your turn (X)";
+                statusEl.textContent = pName + "'s turn (X)";
                 startTimer('X');
             }
         }
@@ -641,8 +647,8 @@
             } else {
                 scores.X++;
                 updateScores();
-                statusEl.textContent = "Time's up! You win on time.";
-                recordBoard("You won on time", null);
+                statusEl.textContent = "Time's up! " + pName + " wins on time.";
+                recordBoard(pName + " won on time", null);
             }
         }
     }
@@ -961,6 +967,9 @@
         document.getElementById('score-x').textContent = scores.X;
         document.getElementById('score-o').textContent = scores.O;
         document.getElementById('score-d').textContent = scores.D;
+        if (typeof gameSet === 'function') {
+            gameSet('ttt_scores', JSON.stringify(scores));
+        }
     }
 
     function recordBoard(result, winCells) {
@@ -1236,7 +1245,7 @@
             if (tossResultEl) {
                 tossResultEl.textContent =
                     firstPlayer === 'X'
-                        ? "Toss: You (X) start"
+                        ? "Toss: " + pName + " (X) starts"
                         : "Toss: Computer (O) starts";
             }
             init();
@@ -1248,5 +1257,14 @@
             resetTimers();
         });
     }
+    // Display loaded scores
+    updateScores();
+
+    // Set player name in static labels
+    var pxLabel = document.getElementById('player-x-label');
+    var sxLabel = document.getElementById('score-x-label');
+    if (pxLabel) pxLabel.textContent = pName + ' (X)';
+    if (sxLabel) sxLabel.textContent = pName + ' (X)';
+
     init();
 })();

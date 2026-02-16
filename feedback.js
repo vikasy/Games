@@ -11,10 +11,11 @@
     // --- Inject styles ---
     var css = document.createElement('style');
     css.textContent = [
-        '.fb-btn{position:fixed;bottom:18px;right:18px;z-index:9999;width:44px;height:44px;',
-        'border-radius:50%;border:none;background:#2a2a4a;color:#ffd700;font-size:1.3rem;',
-        'cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.4);transition:transform .2s,background .2s;',
-        'display:flex;align-items:center;justify-content:center;line-height:1}',
+        '.fb-wrap{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:4px}',
+        '.fb-btn{display:inline-flex;align-items:center;justify-content:center;',
+        'width:32px;height:32px;border-radius:50%;border:none;flex-shrink:0;',
+        'background:#2a2a4a;color:#ffd700;font-size:1rem;cursor:pointer;',
+        'box-shadow:0 2px 8px rgba(0,0,0,.3);transition:transform .2s,background .2s;line-height:1}',
         '.fb-btn:hover{transform:scale(1.1);background:#333366}',
 
         '.fb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);',
@@ -46,13 +47,23 @@
     ].join('\n');
     document.head.appendChild(css);
 
-    // --- Inject button ---
+    // --- Inject button beside page title ---
     var btn = document.createElement('button');
     btn.className = 'fb-btn';
     btn.title = 'Send feedback';
     btn.setAttribute('aria-label', 'Send feedback');
     btn.innerHTML = '&#x1F4AC;';
-    document.body.appendChild(btn);
+    var h1 = document.querySelector('h1');
+    if (h1) {
+        // Wrap h1 + button in a flex row so button sits beside title
+        var wrap = document.createElement('div');
+        wrap.className = 'fb-wrap';
+        h1.parentNode.insertBefore(wrap, h1);
+        wrap.appendChild(h1);
+        wrap.appendChild(btn);
+    } else {
+        document.body.prepend(btn);
+    }
 
     // --- Inject overlay + form ---
     var overlay = document.createElement('div');

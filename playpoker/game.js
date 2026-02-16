@@ -14,7 +14,7 @@
     ];
 
     const NUM_PLAYERS = 4;
-    const PLAYER_NAMES = ['You', 'Alice', 'Bob', 'Charlie'];
+    const PLAYER_NAMES = [typeof getActivePlayer === 'function' ? getActivePlayer() : 'You', 'Alice', 'Bob', 'Charlie'];
     const PLAYER_AVATARS = ['🦊', '🦁', '🐼', '🦉'];
     const STARTING_CHIPS = 1000;
     const SMALL_BLIND = 10;
@@ -746,9 +746,9 @@ let hasStartedHand = false;
         raiseInput.disabled = !canRaise;
 
         if (raisesThisRound >= MAX_RAISES_PER_ROUND) {
-            statusEl.textContent = `Your turn! (Max ${MAX_RAISES_PER_ROUND} raises per round — no more raising)`;
+            statusEl.textContent = `${PLAYER_NAMES[0]}'s turn! (Max ${MAX_RAISES_PER_ROUND} raises per round — no more raising)`;
         } else {
-            statusEl.textContent = 'Your turn!';
+            statusEl.textContent = `${PLAYER_NAMES[0]}'s turn!`;
         }
     }
 
@@ -1256,6 +1256,17 @@ let hasStartedHand = false;
         });
     }
 
+    function savePokerStats(playerWon) {
+        if (typeof gameGet !== 'function') return;
+        try {
+            var raw = gameGet('poker_stats');
+            var stats = raw ? JSON.parse(raw) : { hands: 0, wins: 0 };
+            stats.hands++;
+            if (playerWon) stats.wins++;
+            gameSet('poker_stats', JSON.stringify(stats));
+        } catch(e) {}
+    }
+
     function recordHandSummary(desc) {
         if (!handCounter) return;
         const snapshot = players.map((p, idx) => ({
@@ -1271,6 +1282,7 @@ let hasStartedHand = false;
             players: snapshot
         });
         if (handHistory.length > 10) handHistory.pop();
+        savePokerStats(lastHandWinners.includes(0));
         renderHandHistory();
     }
 
@@ -1411,7 +1423,7 @@ let hasStartedHand = false;
 
         const c1 = FACE_NAMES[p.hole[0].face] + SUIT_SYMBOLS[p.hole[0].suit];
         const c2 = FACE_NAMES[p.hole[1].face] + SUIT_SYMBOLS[p.hole[1].suit];
-        let msg = `Your cards: ${c1}  ${c2}`;
+        let msg = `${PLAYER_NAMES[0]}'s cards: ${c1}  ${c2}`;
 
         // Hole card description
         if (p.hole[0].face === p.hole[1].face) {
@@ -1568,6 +1580,10 @@ let hasStartedHand = false;
     myHandBtn.addEventListener('click', showMyHand);
     if (rankingsBtn) rankingsBtn.addEventListener('click', toggleRankings);
     if (rankingsClose) rankingsClose.addEventListener('click', toggleRankings);
+
+    // Set player name in subtitle
+    var pokerSub = document.getElementById('poker-subtitle');
+    if (pokerSub) pokerSub.textContent = PLAYER_NAMES[0] + ' vs 3 Opponents \u2014 Blinds $10/$20';
 
     init();
 })();

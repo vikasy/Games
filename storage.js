@@ -142,12 +142,35 @@
                     });
                 }
             } catch (e) {}
+            // Tic Tac Toe stats
+            var tttW = 0, tttD = 0, tttL = 0;
+            try {
+                var tttRaw = localStorage.getItem(prefix + 'ttt_scores');
+                if (tttRaw) {
+                    var ts = JSON.parse(tttRaw);
+                    tttW = ts.X || 0;
+                    tttL = ts.O || 0;
+                    tttD = ts.D || 0;
+                }
+            } catch (e) {}
+            // Poker stats
+            var pkHands = 0, pkWins = 0;
+            try {
+                var pkRaw = localStorage.getItem(prefix + 'poker_stats');
+                if (pkRaw) {
+                    var pk = JSON.parse(pkRaw);
+                    pkHands = pk.hands || 0;
+                    pkWins = pk.wins || 0;
+                }
+            } catch (e) {}
             data.push({
                 name: name,
                 pqStars: pqStars,
                 pqCompleted: pqCompleted,
                 cfGames: cfGames,
-                cfCandies: cfCandies
+                cfCandies: cfCandies,
+                tttW: tttW, tttD: tttD, tttL: tttL,
+                pkHands: pkHands, pkWins: pkWins
             });
         });
         return data;
