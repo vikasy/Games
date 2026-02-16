@@ -254,10 +254,6 @@ let hasStartedHand = false;
         return idx;
     }
 
-    function activePlayers() {
-        return players.filter(p => !p.busted && !p.folded);
-    }
-
     function activeNonAllInPlayers() {
         return players.filter(p => !p.busted && !p.folded && !p.allIn);
     }
@@ -492,7 +488,7 @@ let hasStartedHand = false;
         let wins = 0, ties = 0;
 
         for (let sim = 0; sim < numSims; sim++) {
-            for (let i = 0; i < cardsNeeded && i < remaining.length - 1; i++) {
+            for (let i = 0; i < cardsNeeded && i < remaining.length; i++) {
                 const j = i + Math.floor(Math.random() * (remaining.length - i));
                 const tmp = remaining[i]; remaining[i] = remaining[j]; remaining[j] = tmp;
             }
@@ -741,7 +737,7 @@ let hasStartedHand = false;
         }
 
         raiseInput.min = BIG_BLIND;
-        raiseInput.max = p.chips - (toCall > 0 ? toCall : 0);
+        raiseInput.max = Math.max(0, p.chips - (toCall > 0 ? toCall : 0));
         raiseInput.value = BIG_BLIND;
 
         // Disable raise if can't afford it or raise cap reached
@@ -924,13 +920,6 @@ let hasStartedHand = false;
             cmp: winnerIdx === idxA ? 1 : -1,
             detail
         });
-
-        const winnerInfo = (condition, detailBuilder) => {
-            if (!condition) return null;
-            const winnerIdx = condition > 0 ? idxA : idxB;
-            const loserIdx = winnerIdx === idxA ? idxB : idxA;
-            return announce(winnerIdx, detailBuilder(winnerIdx, loserIdx));
-        };
 
         switch (ra.rankVal) {
             case 0: // Royal Flush
@@ -1426,7 +1415,7 @@ let hasStartedHand = false;
 
         // Hole card description
         if (p.hole[0].face === p.hole[1].face) {
-            msg += '  (Pocket ' + FACE_NAMES[p.hole[0].face] + 's)';
+            msg += '  (Pocket ' + FACE_PLURALS[p.hole[0].face] + ')';
         } else if (p.hole[0].suit === p.hole[1].suit) {
             msg += '  (Suited)';
         }
@@ -1476,19 +1465,20 @@ let hasStartedHand = false;
             if (suitCounts[s] === 4) hints.push('Flush draw (9 outs)');
         }
 
-        // Check straight draw (open-ended)
+        // Check straight draw (open-ended), including ace-high wraps
         const faces = [...new Set(allCards.map(c => c.face))].sort((a, b) => a - b);
-        for (let i = 0; i <= faces.length - 4; i++) {
-            if (faces[i + 3] - faces[i] === 3 || faces[i + 3] - faces[i] === 4) {
-                const gap = faces[i + 3] - faces[i];
-                if (gap === 3) { hints.push('Open-ended straight draw (8 outs)'); break; }
-                if (gap === 4) {
-                    let missing = 0;
-                    for (let j = faces[i]; j <= faces[i + 3]; j++) {
-                        if (!faces.includes(j)) missing++;
-                    }
-                    if (missing === 1) { hints.push('Gutshot straight draw (4 outs)'); break; }
+        // Add ace as high (14) if present as low (12 = ace in 0-indexed)
+        const facesExt = faces.includes(12) ? [...faces, 13] : [...faces];
+        let straightDrawFound = false;
+        for (let i = 0; i <= facesExt.length - 4 && !straightDrawFound; i++) {
+            const gap = facesExt[i + 3] - facesExt[i];
+            if (gap === 3) { hints.push('Open-ended straight draw (8 outs)'); straightDrawFound = true; }
+            else if (gap === 4) {
+                let missing = 0;
+                for (let j = facesExt[i]; j <= facesExt[i + 3]; j++) {
+                    if (!facesExt.includes(j)) missing++;
                 }
+                if (missing === 1) { hints.push('Gutshot straight draw (4 outs)'); straightDrawFound = true; }
             }
         }
 

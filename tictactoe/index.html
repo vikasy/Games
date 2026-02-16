@@ -64,23 +64,12 @@
             </div>
 
             <div id="tab-math" class="modal-tab-panel">
-                <h4>Newell &amp; Simon's Strategy (1972)</h4>
-                <p>Instead of imagining every possible game, this strategy uses a simple <strong>priority checklist</strong>. On each turn, the computer goes down the list and picks the first rule that applies:</p>
-                <ol>
-                    <li><strong>Win:</strong> If there's a square that completes a line of O's &mdash; take it!</li>
-                    <li><strong>Block:</strong> If the opponent has two X's in a line with one empty &mdash; block it!</li>
-                    <li><strong>Fork:</strong> Find a square that creates two winning threats at once.</li>
-                    <li><strong>Block fork:</strong> Stop the opponent from creating a fork.</li>
-                    <li><strong>Center:</strong> Take the center square if it's open.</li>
-                    <li><strong>Opposite corner:</strong> If the opponent is in a corner, take the opposite one.</li>
-                    <li><strong>Any corner:</strong> Grab any empty corner.</li>
-                    <li><strong>Any side:</strong> Take whatever's left.</li>
-                </ol>
                 <h4>The Numbers</h4>
                 <p>A 3&times;3 board has <strong>9</strong> squares. The total number of ways to fill them is 9! = <strong>362,880</strong>. But many of those games end early (someone wins), so there are about <strong>255,168</strong> possible games. If you ignore symmetry (rotations and reflections), only <strong>138</strong> unique endings exist!</p>
                 <p>A 3&times;3 board has <strong>8</strong> winning lines: 3 rows + 3 columns + 2 diagonals. A 4&times;4 board has <strong>10</strong>, and a 5&times;5 board has <strong>12</strong>.</p>
                 <h4>Why MiniMax Always Draws</h4>
                 <p>MiniMax explores every branch of the game tree. On a 3&times;3 board, if both players use MiniMax, every path leads to a draw. That means tic-tac-toe is a <strong>solved game</strong> &mdash; perfect play from both sides always ties!</p>
+                <p>Click the <strong>🖥 Computer Brain</strong> button to see how each algorithm works step by step.</p>
             </div>
         </div>
     </div>

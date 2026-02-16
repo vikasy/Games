@@ -5,9 +5,6 @@
 (function () {
     let DIM = 3;
     let board = [];      // 2D array: 0=empty, 'X', 'O'
-    if (typeof window !== "undefined") {
-        window.__peekBoard = () => board.map(row => [...row]);
-    }
     let currentPlayer;   // 'X' or 'O'
     let gameOver;
     let scores = { X: 0, O: 0, D: 0 };
@@ -278,21 +275,13 @@
         let bestScore = -Infinity;
         let bestMove = null;
         const considered = [];
-        const clampScore = (value) => {
-            if (value >= 9) return 9;
-            if (value <= -9) return -9;
-            return value;
-        };
         const mid = Math.floor(DIM / 2);
         for (let c = 0; c < DIM; c++) {
             for (let r = 0; r < DIM; r++) {
                 if (!board[r][c]) {
                     board[r][c] = 'O';
                     const scenario = describeOpponentReply([r, c]);
-                    let score = clampScore(minimax(false, 0));
-                    if (DIM === 3 && r === mid && c === mid) {
-                        score += 2;
-                    }
+                    const score = minimax(false, 0);
                     board[r][c] = 0;
                     considered.push({ move: [r, c], score, scenario });
                     if (score > bestScore) {
@@ -462,9 +451,12 @@
     }
 
     function squareLabel([r, c]) {
-        const rows = ['top', 'middle', 'bottom'];
-        const cols = ['left', 'center', 'right'];
-        return `${rows[r]}-${cols[c]}`;
+        if (DIM === 3) {
+            const rows = ['top', 'middle', 'bottom'];
+            const cols = ['left', 'center', 'right'];
+            return `${rows[r]}-${cols[c]}`;
+        }
+        return `row ${r + 1}, col ${c + 1}`;
     }
 
     // --- "Think Like the Computer" coach feedback ---
@@ -794,9 +786,9 @@
     function isDraw() {
         // Board full = obvious draw
         let hasEmpty = false;
-        for (let r = 0; r < DIM; r++)
+        outer: for (let r = 0; r < DIM; r++)
             for (let c = 0; c < DIM; c++)
-                if (!board[r][c]) { hasEmpty = true; break; }
+                if (!board[r][c]) { hasEmpty = true; break outer; }
         if (!hasEmpty) return true;
 
         // Early draw: check if ANY winning line is still possible for either player
@@ -1235,22 +1227,7 @@
                 playAsComputerToggle.checked = false;
                 return;
             }
-            // Sync state — the hidden checkbox might be toggled directly
-            playAsComputer = playAsComputerToggle.checked;
-            syncIconToggleStates();
-            if (!playAsComputer) {
-                if (waitingForKidO) {
-                    waitingForKidO = false;
-                    hideCoachFeedback();
-                    statusEl.textContent = "Computer thinking...";
-                    setTimeout(computerMove, 300);
-                }
-            } else {
-                if (!gameOver && currentPlayer === 'O') {
-                    waitingForKidO = true;
-                    statusEl.textContent = "🎯 Now think like the computer — pick O's best move!";
-                }
-            }
+            handlePlayAsComputerToggle();
         });
     }
     if (tossBtn) {

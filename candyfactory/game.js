@@ -56,15 +56,15 @@
     let pickWarnSecond = null;
 
     // --- Active Math Mode state ---
-    let activeMode = false;
+    let activeMode = false; // synced from DOM in mode-select setup below
     let mathScore = { correct: 0, total: 0 };
-    let challengeCallback = null;  // called after challenge answered
     let boxCountStreak = 0;        // streak for type 2 (boxes left) — skip after 3 correct
     let challengeRotation = 0;     // drives challenge frequency
     let challengeDeck = [];
     let lastOpenedValue = 0;       // value of last opened box (for challenge context)
     let prevTotal = 0;             // total before last box opened
     let pendingStatsUpdate = null; // deferred stats update { sum, count }
+    let medianSnapshot = [];       // captured before final reveal for median challenge
 
     const casesGridEl = document.getElementById('cases-grid');
     const statusEl = document.getElementById('status');
@@ -479,7 +479,7 @@ function autoOpenCase() {
     }
 
     function onDeal() {
-        if (stage !== 'offer' && offerMode !== 'swap') return;
+        if (stage !== 'offer' && stage !== 'swap') return;
         if (offerMode === 'offer') {
             lastDecisionType = 'accept';
             sndDeal();
@@ -494,7 +494,7 @@ function autoOpenCase() {
     }
 
     function onNoDeal() {
-        if (stage !== 'offer' && offerMode !== 'swap') return;
+        if (stage !== 'offer' && stage !== 'swap') return;
         if (offerMode === 'offer') {
             lastDecisionType = 'reject';
             sndNoDeal();
@@ -520,6 +520,12 @@ function autoOpenCase() {
         offerMode = 'offer';
         swapTarget = -1;
         const playerMoney = cases[playerCase].money;
+
+        // Snapshot remaining values for median challenge (before we open everything)
+        medianSnapshot = [];
+        for (let i = 0; i < NUM_CASES; i++) {
+            if (!cases[i].opened) medianSnapshot.push(cases[i].money);
+        }
 
         // Reveal player's box
         sndBigReveal();
@@ -1154,40 +1160,10 @@ function showPostOpenChallenge(idx, remainingToOpen, autoOpened = false) {
         }, 'Multiply the lower percentage for this round by the EV to get the lowest offer.');
     }
 
-    // --- Challenge Type 6: Should you accept? (ungraded) ---
-    function showOfferAdviceChallenge(offer, onDone) {
-        const ev = Math.round(avgUnopened);
-        const diff = offer - ev;
-        const aboveBelow = diff >= 0 ? 'ABOVE' : 'BELOW';
-        const q = `The offer is <strong>${offer.toLocaleString()}</strong> candies.<br>` +
-            `The average (EV) of remaining boxes is <strong>${ev.toLocaleString()}</strong> candies.<br><br>` +
-            `Is the offer above or below the average?`;
-        const explanation = `The offer is <strong>${aboveBelow}</strong> the average by ${Math.abs(diff).toLocaleString()} candies.<br>` +
-            (diff >= 0
-                ? 'Mathematically, accepting is a good deal!'
-                : 'Mathematically, rejecting gives you higher expected value.');
-        showUngradedChallenge(q, explanation, onDone);
-    }
-
     // --- Challenge Type 7: Median ---
+    // Called from finishGame with pre-captured values (before final reveal opens all boxes)
     function showMedianChallenge(onDone) {
-        const remaining = [];
-        for (let i = 0; i < NUM_CASES; i++) {
-            if (!cases[i].opened || i === playerCase) {
-                // include player's box since it's part of remaining
-            }
-            if (!cases[i].opened) remaining.push(cases[i].money);
-        }
-        // If game just ended, we opened the player's box — use values before final reveal
-        // Actually let's just gather whatever's still conceptually "remaining"
-        // At game end all boxes are opened, so let's reconstruct from the last state
-        // Use values that were unopened right before the final reveal
-        const vals = [];
-        for (let i = 0; i < NUM_CASES; i++) {
-            if (i === playerCase || (cases[i].opened === false)) {
-                vals.push(cases[i].money);
-            }
-        }
+        const vals = medianSnapshot;
         if (vals.length < 2) {
             // Not enough for median, skip
             onDone();

@@ -84,7 +84,6 @@
     var $hud = document.getElementById('hud');
     var $hudScore = document.getElementById('hud-score');
     var $hudStreak = document.getElementById('hud-streak');
-    var $streakFlame = document.getElementById('streak-flame');
     var $hudRank = document.getElementById('hud-rank');
     var $timerContainer = document.getElementById('timer-bar-container');
     var $timerBar = document.getElementById('timer-bar');
@@ -248,17 +247,6 @@
 
     function gcd(a, b) { while (b) { var t = b; b = a % b; a = t; } return a; }
 
-    function eulerTotient(n) {
-        var result = n, temp = n;
-        for (var p = 2; p * p <= temp; p++) {
-            if (temp % p === 0) {
-                while (temp % p === 0) temp = Math.floor(temp / p);
-                result -= Math.floor(result / p);
-            }
-        }
-        if (temp > 1) result -= Math.floor(result / temp);
-        return result;
-    }
 
     // Simplified AKS for game (step results)
     function aksSteps(n) {
@@ -722,7 +710,7 @@
         var primeSet = {};
         sieve(limit).forEach(function(p){ primeSet[p] = true; });
 
-        var cols = limit <= 30 ? 6 : limit <= 50 ? 10 : 10;
+        var cols = limit <= 30 ? 6 : 10;
         state.sieveState = {limit: limit, crossed: {}, primeSet: primeSet, cols: cols};
         $questionPrompt.innerHTML = '<strong>Sieve of Eratosthenes</strong><br>Click non-prime numbers to cross them out (e.g. 4, 6, 8... are multiples of 2). Leave primes standing, then click Done!';
         $progress.textContent = 'Grid: 2–' + limit;
@@ -1405,7 +1393,8 @@
         // Test with multiple bases
         var testBases = bases.filter(function(b) { return b < n && gcd(b, n) === 1; }).slice(0, 4);
         var results = testBases.map(function(a) {
-            return { base: a, result: modPow(a, n - 1, n), passes: modPow(a, n - 1, n) === 1 };
+            var r = modPow(a, n - 1, n);
+            return { base: a, result: r, passes: r === 1 };
         });
         var allPass = results.every(function(r) { return r.passes; });
 
@@ -2078,19 +2067,10 @@
 
     function renderLevelPolyFermat() {
         var n;
-        if (state.currentRound === 2 && Math.random() < 0.4) {
-            n = pickRandom(CARMICHAEL.filter(function(c){ return c <= 100; }).concat([561]));
-            if (!n || n > 100) n = pickRandom([4, 6, 8, 9, 10, 12, 15, 21, 25]);
-        } else if (state.currentRound === 0) {
+        if (state.currentRound === 0) {
             n = pickRandom([3, 5, 7]);
         } else {
             n = pickRandom([3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
-        }
-
-        // For large Carmichael numbers, use a smaller substitute for the visual
-        if (n > 20) {
-            // Still show the concept but with smaller n for visual
-            n = pickRandom([4, 6, 8, 9, 10, 12, 15]);
         }
 
         var isPrime = trialDivision(n);
@@ -2359,7 +2339,6 @@
     // ═══ LEVEL 16: BONUS — MERSENNE PRIMES ═══════════════════════════════
 
     var MERSENNE_PRIMES = [2,3,5,7,13,17,19,31]; // exponents that give Mersenne primes
-    var MERSENNE_NON = [4,6,8,9,10,11,12,14,15,16,18,20,23]; // exponents that don't
 
     function lucasLehmerSteps(p) {
         var mp = Math.pow(2, p) - 1;

@@ -1306,7 +1306,7 @@ body.active-math-mode .prob-tracker.revealed {
     pointer-events: auto;
 }
 
-.stat-card.stat-highlight {
+.stat-chip.stat-highlight {
     animation: statFlash 0.8s ease;
 }
 
