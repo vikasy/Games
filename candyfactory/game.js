@@ -14,6 +14,12 @@
     const NUM_CASES = CASE_MONIES.length;
     const TOTAL_SUM = CASE_MONIES.reduce((sum, value) => sum + value, 0);
     const INITIAL_EV = TOTAL_SUM / NUM_CASES;
+    const MIN_EV = Math.min(...CASE_MONIES);
+    const MAX_EV = Math.max(...CASE_MONIES);
+    const POINTER_MIN_EV = 100;
+    const POINTER_MAX_EV = MAX_EV;
+    const POINTER_T = 150000;
+    const POINTER_LINEAR_PORTION = 0.65;
     // Boxes to open per round (player opens 28 total)
     const NCASE_TO_OPEN = [7, 6, 5, 4, 3, 2, 1];
     const NUM_ROUNDS = NCASE_TO_OPEN.length;
@@ -27,6 +33,7 @@
         [0.50, 0.65],
         [0.60, 0.75]
     ];
+    const CHALLENGE_POOL = ['total', 'ev', 'probability', 'total', 'boxCount', 'ev', 'probability'];
 
     let cases = [];        // { money, opened }
     let caseStatus = [];   // tracks which money values are eliminated
@@ -46,14 +53,15 @@
     const HIGH_THRESHOLD = 1000;
     let pickTimerId = null;
     let pickTimeLeft = 0;
-    let pickWarnPlayed = false;
+    let pickWarnSecond = null;
 
     // --- Active Math Mode state ---
     let activeMode = false;
     let mathScore = { correct: 0, total: 0 };
     let challengeCallback = null;  // called after challenge answered
     let boxCountStreak = 0;        // streak for type 2 (boxes left) — skip after 3 correct
-    let challengeRotation = 0;     // cycles through challenge types
+    let challengeRotation = 0;     // drives challenge frequency
+    let challengeDeck = [];
     let lastOpenedValue = 0;       // value of last opened box (for challenge context)
     let prevTotal = 0;             // total before last box opened
     let pendingStatsUpdate = null; // deferred stats update { sum, count }
@@ -87,12 +95,23 @@
     const mathAnswerEl = document.getElementById('math-answer');
     const mathCheckEl = document.getElementById('math-check');
     const mathFeedbackEl = document.getElementById('math-feedback');
+    const mathHintBtn = document.getElementById('math-hint');
+    const mathHintNoteEl = document.getElementById('math-hint-note');
     const mathScoreEl = document.getElementById('math-score');
     const modeSelectEl = document.getElementById('mode-select');
     const candyStatsEl = document.querySelector('.candy-stats');
     const probTrackerEl = document.getElementById('prob-tracker');
+    const probTitleEl = document.getElementById('prob-title');
+    const rulesCardEl = document.querySelector('.game-rules-card');
+    const evPointerEl = document.getElementById('ev-pointer');
+    const evOfferMarkersEl = document.getElementById('ev-offer-markers');
+    const PROB_EMPTY_ROW_HTML = '<tr><td colspan="5" class="tracker-empty">No data yet. Reject an offer to start tracking!</td></tr>';
+    let infoModalInitialized = false;
+    let currentGameNumber = 0;
 
     function initGame() {
+        currentGameNumber += 1;
+        rulesCardEl?.classList.add('hidden');
         // Fill and shuffle cases (Fisher-Yates, matching original)
         cases = CASE_MONIES.map(m => ({ money: m, opened: false }));
         const rand = () => Math.random();
@@ -113,6 +132,10 @@
         statusEl.className = '';
         roundInfoEl.textContent = '';
         prevOffersEl.innerHTML = '';
+        resetProbabilityTracker();
+        updateProbTrackerTitle();
+        refillChallengeDeck();
+        resetOfferMarkers();
         renderCases();
         renderMoneyBoard();
         offerMode = 'offer';
@@ -120,7 +143,6 @@
         lastDecisionType = 'keep';
         stopPickTimer();
         startPickTimer();
-        setupInfoModal();
 
         // Reset math state
         mathScore = { correct: 0, total: 0 };
@@ -133,14 +155,14 @@
         hideMathChallenge();
 
         // Reset stats visibility for active mode
-        if (activeMode) {
-            candyStatsEl?.classList.remove('revealed');
-            probTrackerEl?.classList.remove('revealed');
-        }
+        candyStatsEl?.classList.remove('revealed');
+        probTrackerEl?.classList.remove('revealed');
+        updateEVPointer(INITIAL_EV);
     }
 
     function setupInfoModal() {
-        if (!infoBtn || !infoModal) return;
+        if (infoModalInitialized || !infoBtn || !infoModal) return;
+        infoModalInitialized = true;
         infoBtn.addEventListener('click', () => infoModal.classList.add('active'));
         closeInfoBtn?.addEventListener('click', () => infoModal.classList.remove('active'));
         infoModal.addEventListener('click', (evt) => {
@@ -155,6 +177,75 @@
                 panel?.classList.add('active');
             });
         });
+    }
+
+function resetProbabilityTracker() {
+    if (!probBodyEl) return;
+    probBodyEl.innerHTML = PROB_EMPTY_ROW_HTML;
+    delete probBodyEl.dataset.hasData;
+}
+
+function updateProbTrackerTitle() {
+    if (probTitleEl) {
+        if (stage === 'landing' || currentGameNumber === 0) {
+            probTitleEl.textContent = '\u{1F4CA} Probability Tracker';
+        } else {
+            probTitleEl.textContent = `\u{1F4CA} Probability Tracker — Game ${currentGameNumber}`;
+        }
+    }
+}
+
+    function resetOfferMarkers() {
+        if (evOfferMarkersEl) {
+            evOfferMarkersEl.innerHTML = '';
+        }
+    }
+
+    function showLandingState() {
+        stage = 'landing';
+        rulesCardEl?.classList.remove('hidden');
+        offerBoxEl.classList.remove('visible');
+        offerMode = 'offer';
+        swapTarget = -1;
+        lastDecisionType = 'keep';
+        statusEl.textContent = 'Welcome to Candy Factory! Click New Game to shuffle the boxes.';
+        statusEl.className = '';
+        roundInfoEl.textContent = 'Read the rules below, then tap New Game when ready.';
+        prevOffersEl.innerHTML = '';
+        currentRound = 0;
+        casesToOpenThisRound = 0;
+        casesOpenedThisRound = 0;
+        offerList = [];
+        cases = CASE_MONIES.map(m => ({ money: m, opened: false }));
+        caseStatus = Array(NUM_CASES).fill(true);
+        playerCase = -1;
+        renderCases();
+        renderMoneyBoard();
+        stopPickTimer();
+        if (pickTimerEl) pickTimerEl.textContent = '';
+        resetProbabilityTracker();
+        candyStatsEl?.classList.remove('revealed');
+        probTrackerEl?.classList.remove('revealed');
+        renderCandyHistory();
+        updateEVPointer(INITIAL_EV);
+        resetOfferMarkers();
+        refillChallengeDeck();
+        updateProbTrackerTitle();
+    }
+
+    function refillChallengeDeck() {
+        challengeDeck = CHALLENGE_POOL.slice();
+        for (let i = challengeDeck.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [challengeDeck[i], challengeDeck[j]] = [challengeDeck[j], challengeDeck[i]];
+        }
+    }
+
+    function drawChallengeType() {
+        if (!challengeDeck.length) {
+            refillChallengeDeck();
+        }
+        return challengeDeck.shift();
     }
 
     function renderCases() {
@@ -203,15 +294,15 @@
         }
     }
 
-    function onCaseClick(idx) {
-        ensureAudioCtx(); // unlock audio on first user interaction
-        if (stage === 'select') {
-            selectPlayerCase(idx);
-            return;
-        }
+function onCaseClick(idx, autoAction = false) {
+    ensureAudioCtx(); // unlock audio on first user interaction
+    if (stage === 'select') {
+        selectPlayerCase(idx, autoAction);
+        return;
+    }
 
-        if (stage === 'opening') {
-            if (idx === playerCase || cases[idx].opened) return;
+    if (stage === 'opening') {
+        if (idx === playerCase || cases[idx].opened) return;
             // Open this box
             sndCaseOpen();
             cases[idx].opened = true;
@@ -229,58 +320,60 @@
             lastOpenedValue = val;
             prevTotal = getUnopenedSum() + val; // total BEFORE this box was opened
 
-            if (activeMode) {
-                // In active mode: update internal avg but defer stats display
-                updateAvgInternal();
-                renderCases();
-                renderMoneyBoard();
-                // Show math challenge, then continue game flow
-                const remaining = casesToOpenThisRound - casesOpenedThisRound;
-                showPostOpenChallenge(idx, remaining);
-            } else {
-                updateAvg();
-                renderCases();
-                renderMoneyBoard();
-                continueAfterOpen(idx);
-            }
-        }
-    }
-
-    function continueAfterOpen(idx) {
-        const remaining = casesToOpenThisRound - casesOpenedThisRound;
-        if (remaining > 0) {
-            statusEl.textContent = `Candy box #${idx + 1} had ${formatCandies(cases[idx].money)}. Open ${remaining} more box${remaining > 1 ? 'es' : ''}.`;
-            roundInfoEl.textContent = `Round ${currentRound} — ${remaining} to open`;
-            restartOpeningTimer();
+        if (activeMode) {
+            // In active mode: update internal avg but defer stats display
+            updateAvgInternal();
+            renderCases();
+            renderMoneyBoard();
+            // Show math challenge, then continue game flow
+            const remaining = casesToOpenThisRound - casesOpenedThisRound;
+            showPostOpenChallenge(idx, remaining, autoAction);
         } else {
-            const otherClosed = getRemainingClosed();
-            if (otherClosed === 1) {
-                stage = 'swap';
-                statusEl.textContent = `Only two boxes left. Will you swap?`;
-                roundInfoEl.textContent = `Final choice — swap or keep`;
-                stopPickTimer();
-                playRingSound();
-                setTimeout(promptSwap, 1500);
-                return;
-            }
-            if (currentRound > NUM_OFFERS) {
-                finishGame(false, 0);
-                return;
-            }
-            statusEl.textContent = `Candy box #${idx + 1} had ${formatCandies(cases[idx].money)}. The factory manager is calling...`;
-            roundInfoEl.textContent = `Round ${currentRound} — Factory manager's offer`;
-            stage = 'offer';
-            stopPickTimer();
-            offerMode = 'offer';
-            playRingSound();
-            if (activeMode) {
-                // Show offer prediction challenge before the offer
-                setTimeout(() => showOfferPredictionChallenge(), 2200);
-            } else {
-                setTimeout(showOffer, 2200);
-            }
+            updateAvg();
+            renderCases();
+            renderMoneyBoard();
+            continueAfterOpen(idx, autoAction);
         }
     }
+}
+
+function continueAfterOpen(idx, autoOpened = false) {
+    const remaining = casesToOpenThisRound - casesOpenedThisRound;
+    const revealText = `Candy box #${idx + 1} had ${formatCandies(cases[idx].money)}.`;
+    const autoNote = autoOpened ? ' Timer expired, so I opened it for you.' : '';
+    if (remaining > 0) {
+        statusEl.textContent = `${revealText}${autoNote} Open ${remaining} more box${remaining > 1 ? 'es' : ''}.`;
+        roundInfoEl.textContent = `Round ${currentRound} — ${remaining} to open`;
+        restartOpeningTimer();
+    } else {
+        const otherClosed = getRemainingClosed();
+        if (otherClosed === 1) {
+            stage = 'swap';
+            statusEl.textContent = `${revealText}${autoNote} Only two boxes left. Will you swap?`;
+            roundInfoEl.textContent = `Final choice — swap or keep`;
+            stopPickTimer();
+            playRingSound();
+            setTimeout(promptSwap, 1500);
+            return;
+        }
+        if (currentRound > NUM_OFFERS) {
+            finishGame(false, 0);
+            return;
+        }
+        statusEl.textContent = `${revealText}${autoNote} The factory manager is calling...`;
+        roundInfoEl.textContent = `Round ${currentRound} — Factory manager's offer`;
+        stage = 'offer';
+        stopPickTimer();
+        offerMode = 'offer';
+        playRingSound();
+        if (activeMode) {
+            // Show offer prediction challenge before the offer
+            setTimeout(() => showOfferPredictionChallenge(), 2200);
+        } else {
+            setTimeout(showOffer, 2200);
+        }
+    }
+}
 
     function selectPlayerCase(idx, auto = false) {
         playerCase = idx;
@@ -300,23 +393,30 @@
         restartOpeningTimer();
     }
 
-    function startPickTimer() {
-        if (!pickTimerEl) return;
-        pickTimeLeft = PICK_TIME_SECONDS;
-        pickWarnPlayed = false;
-        pickTimerEl.textContent = `Pick your candy box in ${pickTimeLeft}s`;
-        pickTimerId = setInterval(() => {
-            pickTimeLeft--;
-            if (pickTimeLeft <= 0) {
-                stopPickTimer();
+function startPickTimer() {
+    if (!pickTimerEl) return;
+    pickTimeLeft = PICK_TIME_SECONDS;
+    pickWarnSecond = null;
+    pickTimerEl.textContent = `${stage === 'opening' ? 'Open a candy box' : 'Pick your candy box'} in ${pickTimeLeft}s`;
+    pickTimerId = setInterval(() => {
+        pickTimeLeft--;
+        if (pickTimeLeft <= 0) {
+            stopPickTimer();
+            if (stage === 'select') {
                 autoSelectPlayerCase();
-            } else {
-                pickTimerEl.textContent = `Pick your candy box in ${pickTimeLeft}s`;
-                if (pickTimeLeft <= 5 && !pickWarnPlayed) {
-                    pickWarnPlayed = true;
-                    sndWarn();
-                }
+            } else if (stage === 'opening') {
+                autoOpenCase();
             }
+        } else {
+            const prompt = stage === 'opening'
+                ? 'Open a candy box'
+                : 'Pick your candy box';
+            pickTimerEl.textContent = `${prompt} in ${pickTimeLeft}s`;
+            if (pickTimeLeft <= 5 && pickWarnSecond !== pickTimeLeft) {
+                pickWarnSecond = pickTimeLeft;
+                sndWarn();
+            }
+        }
         }, 1000);
     }
 
@@ -336,16 +436,28 @@
         startPickTimer();
     }
 
-    function autoSelectPlayerCase() {
-        if (playerCase !== -1) return;
-        const remaining = [];
-        for (let i = 0; i < NUM_CASES; i++) {
-            if (!cases[i].opened) remaining.push(i);
+function autoSelectPlayerCase() {
+    if (playerCase !== -1) return;
+    const remaining = [];
+    for (let i = 0; i < NUM_CASES; i++) {
+        if (!cases[i].opened) remaining.push(i);
         }
         if (!remaining.length) return;
-        const choice = remaining[Math.floor(Math.random() * remaining.length)];
-        selectPlayerCase(choice, true);
+    const choice = remaining[Math.floor(Math.random() * remaining.length)];
+    selectPlayerCase(choice, true);
+}
+
+function autoOpenCase() {
+    if (stage !== 'opening') return;
+    if ((casesToOpenThisRound - casesOpenedThisRound) <= 0) return;
+    const candidates = [];
+    for (let i = 0; i < NUM_CASES; i++) {
+        if (i !== playerCase && !cases[i].opened) candidates.push(i);
     }
+    if (!candidates.length) return;
+    const choice = candidates[Math.floor(Math.random() * candidates.length)];
+    onCaseClick(choice, true);
+}
 
     function showOffer() {
         offerMode = 'offer';
@@ -355,6 +467,7 @@
         const fraction = left + (right - left) * alpha;
         const offer = Math.round(fraction * avgUnopened);
         offerList.push(offer);
+        updateOfferMarkers();
         offerAmountEl.textContent = formatCandies(offer);
         offerBoxEl.classList.add('visible');
         offerTitleEl.textContent = "FACTORY MANAGER'S OFFER";
@@ -366,6 +479,7 @@
     }
 
     function onDeal() {
+        if (stage !== 'offer' && offerMode !== 'swap') return;
         if (offerMode === 'offer') {
             lastDecisionType = 'accept';
             sndDeal();
@@ -380,6 +494,7 @@
     }
 
     function onNoDeal() {
+        if (stage !== 'offer' && offerMode !== 'swap') return;
         if (offerMode === 'offer') {
             lastDecisionType = 'reject';
             sndNoDeal();
@@ -435,9 +550,12 @@
             candiesWon: isDeal ? offer : playerMoney,
             yourBox: playerMoney,
             offer,
-            otherValue: isDeal ? null : otherValue
+            otherValue: isDeal ? null : otherValue,
+            gameNumber: currentGameNumber
         });
         lastDecisionType = 'keep';
+        resetProbabilityTracker();
+        probTrackerEl?.classList.remove('revealed');
 
         // Apply animations after a frame so browser registers initial state
         requestAnimationFrame(() => {
@@ -464,6 +582,42 @@
     }
 
     // --- Stats helpers ---
+    function calcEVRatio(value) {
+        const min = POINTER_MIN_EV;
+        const max = POINTER_MAX_EV;
+        const mid = POINTER_T;
+        const a = POINTER_LINEAR_PORTION;
+        if (value <= min) return 0;
+        if (value >= max) return 1;
+        if (value <= mid) {
+            return a * ((value - min) / (mid - min));
+        }
+        const logSpan = Math.log(max / mid);
+        const portion = Math.log(value / mid) / logSpan;
+        return a + (1 - a) * portion;
+    }
+
+    function updateEVPointer(value) {
+        if (!evPointerEl) return;
+        const clamped = Math.min(Math.max(value, POINTER_MIN_EV), POINTER_MAX_EV);
+        const ratio = calcEVRatio(clamped);
+        evPointerEl.style.left = `${(ratio * 100).toFixed(2)}%`;
+    }
+
+    function updateOfferMarkers() {
+        if (!evOfferMarkersEl) return;
+        evOfferMarkersEl.innerHTML = '';
+        if (!offerList.length) return;
+        offerList.forEach((offer, idx) => {
+            const marker = document.createElement('div');
+            marker.className = 'ev-offer-marker' + (idx === offerList.length - 1 ? ' latest' : '');
+            const clamped = Math.min(Math.max(offer, POINTER_MIN_EV), POINTER_MAX_EV);
+            const ratio = calcEVRatio(clamped);
+            marker.style.left = `${(ratio * 100).toFixed(2)}%`;
+            evOfferMarkersEl.appendChild(marker);
+        });
+    }
+
     function getUnopenedSum() {
         let sum = 0;
         for (let i = 0; i < NUM_CASES; i++) {
@@ -547,15 +701,16 @@
     }
 
     function historySummary(entry) {
+        const prefix = entry.gameNumber ? `Game ${entry.gameNumber}: ` : '';
         switch (entry.decision) {
             case 'accept':
-                return `Accepted ${formatCandies(entry.offer)} offer`;
+                return `${prefix}Accepted ${formatCandies(entry.offer)} offer`;
             case 'reject':
-                return `Rejected offer and kept box #${entry.boxNumber}`;
+                return `${prefix}Rejected offer and kept box #${entry.boxNumber}`;
             case 'swap':
-                return `Swapped to box #${entry.boxNumber}`;
+                return `${prefix}Swapped to box #${entry.boxNumber}`;
             default:
-                return `Kept box #${entry.boxNumber}`;
+                return `${prefix}Kept box #${entry.boxNumber}`;
         }
     }
 
@@ -576,6 +731,7 @@
         const mean = unopenedCount ? sum / unopenedCount : 0;
         totalCandiesEl.textContent = `Total: ${sum.toLocaleString()}`;
         meanCandiesEl.textContent = `EV: ${Math.round(mean).toLocaleString()}`;
+        updateEVPointer(mean);
         const boxesRemaining = countUnopenedBoxes();
         const highRemaining = countHighUnopened();
         const probHigh = boxesRemaining ? (highRemaining / boxesRemaining) * 100 : 0;
@@ -585,8 +741,10 @@
                 ? `\u{1F4A1} ${boxesRemaining} boxes left \u2022 ${highRemaining} big \u2022 all equally likely`
                 : 'All candy boxes revealed!';
         }
+
+        const displayRound = Math.max(currentRound, 1);
         appendProbHistory({
-            round: stage === 'offer' ? currentRound : currentRound - 1,
+            round: displayRound,
             opened: casesOpenedThisRound,
             highLeft: highRemaining,
             prob: probHigh.toFixed(1),
@@ -610,15 +768,15 @@
         return total;
     }
 
-    function appendProbHistory(entry) {
-        if (!probBodyEl) return;
-        if (!probBodyEl.dataset.hasData) {
-            probBodyEl.innerHTML = '';
-            probBodyEl.dataset.hasData = '1';
-        }
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>${entry.round || 1}</td>
+function appendProbHistory(entry) {
+    if (!probBodyEl) return;
+    if (!probBodyEl.dataset.hasData) {
+        probBodyEl.innerHTML = '';
+        probBodyEl.dataset.hasData = '1';
+    }
+    const row = document.createElement('tr');
+    row.innerHTML = `
+            <td>${entry.round ?? 1}</td>
             <td>${entry.opened}</td>
             <td>${entry.highLeft}</td>
             <td>${entry.prob}%</td>
@@ -687,16 +845,23 @@
         }
     }
 
+    function formatScoreValue(val) {
+        const rounded = Math.round(val * 10) / 10;
+        return Number.isInteger(rounded) ? rounded.toString() : rounded.toFixed(1);
+    }
+
     function updateMathScoreDisplay() {
         if (!mathScoreEl) return;
-        mathScoreEl.textContent = `Math Score: ${mathScore.correct} / ${mathScore.total}`;
+        const display = formatScoreValue(mathScore.correct);
+        mathScoreEl.textContent = `Math Score: ${display} / ${mathScore.total}`;
     }
 
     // Shared handler refs so we can remove them cleanly
     let _mathCheckHandler = null;
     let _mathKeyHandler = null;
+    let _mathHintHandler = null;
 
-    function showMathChallenge(question, checkFn, onDone) {
+    function showMathChallenge(question, checkFn, onDone, hintText = null) {
         if (!mathChallengeEl) return;
         stopPickTimer(); // pause timer during challenge
 
@@ -704,18 +869,48 @@
         const aEl = document.getElementById('math-answer');
         const cBtn = document.getElementById('math-check');
         const fbEl = document.getElementById('math-feedback');
+        const hBtn = mathHintBtn;
+        const hintNoteEl = mathHintNoteEl;
 
         qEl.innerHTML = question;
         aEl.value = '';
         fbEl.textContent = '';
         fbEl.className = 'math-feedback';
         mathChallengeEl.style.display = '';
+        if (hintNoteEl) {
+            hintNoteEl.textContent = '';
+        }
 
         // Remove previous listeners if any
         if (_mathCheckHandler) cBtn.removeEventListener('click', _mathCheckHandler);
         if (_mathKeyHandler) aEl.removeEventListener('keydown', _mathKeyHandler);
+        if (hBtn && _mathHintHandler) {
+            hBtn.removeEventListener('click', _mathHintHandler);
+            _mathHintHandler = null;
+        }
 
         let answered = false;
+        let hintUsed = false;
+
+        if (hBtn) {
+            if (hintText) {
+                hBtn.style.display = '';
+                hBtn.disabled = false;
+                _mathHintHandler = () => {
+                    if (hintUsed) return;
+                    hintUsed = true;
+                    hBtn.disabled = true;
+                    if (hintNoteEl) {
+                        hintNoteEl.textContent = `Hint: ${hintText}`;
+                    }
+                };
+                hBtn.addEventListener('click', _mathHintHandler);
+            } else {
+                hBtn.style.display = 'none';
+            }
+        } else if (hintNoteEl) {
+            hintNoteEl.textContent = '';
+        }
 
         function doCheck() {
             if (answered) return;
@@ -725,9 +920,11 @@
             const result = checkFn(userVal);
             mathScore.total++;
             if (result.correct) {
-                mathScore.correct++;
+                const earned = hintUsed ? 0.5 : 1;
+                mathScore.correct += earned;
                 fbEl.className = 'math-feedback correct';
-                fbEl.textContent = result.message || 'Correct!';
+                const baseMsg = result.message || 'Correct!';
+                fbEl.textContent = hintUsed ? `${baseMsg} (Hint used: +0.5 point)` : baseMsg;
             } else {
                 fbEl.className = 'math-feedback wrong';
                 fbEl.textContent = result.message || 'Not quite.';
@@ -736,6 +933,10 @@
             // Clean up listeners
             cBtn.removeEventListener('click', _mathCheckHandler);
             aEl.removeEventListener('keydown', _mathKeyHandler);
+            if (hBtn && _mathHintHandler) {
+                hBtn.removeEventListener('click', _mathHintHandler);
+                _mathHintHandler = null;
+            }
             _mathCheckHandler = null;
             _mathKeyHandler = null;
             // Auto-dismiss after delay
@@ -766,6 +967,15 @@
         fbEl.textContent = '';
         fbEl.className = 'math-feedback';
         mathChallengeEl.style.display = '';
+        if (mathHintBtn) {
+            mathHintBtn.style.display = 'none';
+            mathHintBtn.disabled = true;
+        }
+        if (mathHintNoteEl) mathHintNoteEl.textContent = '';
+        if (_mathHintHandler && mathHintBtn) {
+            mathHintBtn.removeEventListener('click', _mathHintHandler);
+            _mathHintHandler = null;
+        }
 
         // Hide input row, show explanation
         const inputRow = mathChallengeEl.querySelector('.math-input-row');
@@ -794,7 +1004,7 @@
 
     // Pick which challenge to show after opening a box
     // Only ONE challenge every OTHER box — keeps game fun and flowing
-    function showPostOpenChallenge(idx, remainingToOpen) {
+function showPostOpenChallenge(idx, remainingToOpen, autoOpened = false) {
         // Hide stats in active mode
         candyStatsEl?.classList.remove('revealed');
         probTrackerEl?.classList.remove('revealed');
@@ -804,23 +1014,14 @@
         // Skip every other box — no challenge, just flush stats and go
         if (rot % 2 !== 0) {
             flushPendingStats();
-            continueAfterOpen(idx);
+            continueAfterOpen(idx, autoOpened);
             return;
         }
 
-        // Pick ONE challenge type on a rotating basis
-        const cycle = Math.floor(rot / 2) % 5; // 5-step cycle
-        let challenge;
-        switch (cycle) {
-            case 0: challenge = 'total'; break;
-            case 1: challenge = 'ev'; break;
-            case 2: challenge = 'probability'; break;
-            case 3: challenge = 'total'; break;
-            case 4: challenge = 'ev'; break;
-        }
+        let challenge = drawChallengeType();
 
         // Early game: box count instead (only first round, skip after 3-streak)
-        if (boxCountStreak < 3 && currentRound <= 1 && cycle <= 1) {
+        if (boxCountStreak < 3 && currentRound <= 1) {
             challenge = 'boxCount';
         }
 
@@ -831,10 +1032,10 @@
                     candyStatsEl?.classList.remove('revealed');
                     probTrackerEl?.classList.remove('revealed');
                 }
-                continueAfterOpen(idx);
+                continueAfterOpen(idx, autoOpened);
             }, 800);
         });
-    }
+}
 
     function runChallengeSequence(types, index, onAllDone) {
         if (index >= types.length) {
@@ -866,7 +1067,7 @@
                 return { correct: true, message: `Correct! ${currentTotal.toLocaleString()} candies remain.` };
             }
             return { correct: false, message: `The answer is ${currentTotal.toLocaleString()}. (${prevTotal.toLocaleString()} - ${lastOpenedValue.toLocaleString()} = ${currentTotal.toLocaleString()})` };
-        }, (correct) => { onDone(); });
+        }, (correct) => { onDone(); }, 'Subtract the opened box value from the previous total.');
     }
 
     // --- Challenge Type 2: Boxes Left ---
@@ -884,7 +1085,7 @@
             }
             boxCountStreak = 0;
             return { correct: false, message: `The answer is ${correct}. (${NUM_CASES} total - ${totalOpened} opened = ${correct})` };
-        }, (wasCorrect) => { onDone(); });
+        }, (wasCorrect) => { onDone(); }, 'Start with 30 boxes and subtract the ones you have opened.');
     }
 
     // --- Challenge Type 3: EV ---
@@ -903,7 +1104,7 @@
                 return { correct: true, message: `Correct! EV is ${evRounded.toLocaleString()} candies.` };
             }
             return { correct: false, message: `The average (EV) is ${evRounded.toLocaleString()}. (${sum.toLocaleString()} ÷ ${count} = ${evRounded.toLocaleString()})` };
-        }, () => { onDone(); });
+        }, () => { onDone(); }, 'Divide the remaining total candies by the number of unopened boxes (sum ÷ count).');
     }
 
     // --- Challenge Type 4: Probability ---
@@ -922,7 +1123,7 @@
                 return { correct: true, message: `Correct! ${pctRounded}% chance of a BIG box.` };
             }
             return { correct: false, message: `The answer is ${pctRounded}%. (${high}/${count} × 100 = ${pctRounded}%)` };
-        }, () => { onDone(); });
+        }, () => { onDone(); }, 'Take big boxes left ÷ total boxes left, then multiply by 100.');
     }
 
     // --- Challenge Type 5: Offer Prediction ---
@@ -950,7 +1151,7 @@
             return { correct: false, message: `The lowest offer is ${loOffer.toLocaleString()} candies. (${Math.round(lo * 100)}% of ${ev.toLocaleString()} = ${loOffer.toLocaleString()})` };
         }, () => {
             showOffer();
-        });
+        }, 'Multiply the lower percentage for this round by the EV to get the lowest offer.');
     }
 
     // --- Challenge Type 6: Should you accept? (ungraded) ---
@@ -1015,14 +1216,15 @@
                 return { correct: false, message: `The median is ${median.toLocaleString()}. (Average of middle two: ${vals[mid - 1].toLocaleString()} and ${vals[mid].toLocaleString()})` };
             }
             return { correct: false, message: `The median is ${median.toLocaleString()} (the middle value).` };
-        }, () => { onDone(); });
+        }, () => { onDone(); }, 'Sort the values. If you have an odd number, pick the middle one; if even, average the two middle numbers.');
     }
 
     function showMathSummary() {
         if (!mathChallengeEl || mathScore.total === 0) return;
         const pct = Math.round((mathScore.correct / mathScore.total) * 100);
+        const correctDisplay = formatScoreValue(mathScore.correct);
         const q = `<div style="font-size:1.3rem;margin-bottom:10px;">Game Over!</div>` +
-            `You got <strong>${mathScore.correct}</strong> out of <strong>${mathScore.total}</strong> math challenges right!<br>` +
+            `You got <strong>${correctDisplay}</strong> out of <strong>${mathScore.total}</strong> math challenges right!<br>` +
             `That's <strong>${pct}%</strong> accuracy.` +
             (pct >= 80 ? '<br><br>Amazing math skills!' :
                 pct >= 50 ? '<br><br>Good effort! Keep practicing!' :
@@ -1043,6 +1245,7 @@
         modeSelectEl.addEventListener('change', () => {
             setActiveMode(modeSelectEl.value === 'active');
         });
+        setActiveMode(modeSelectEl.value === 'active');
     }
 
     // --- Phone ring sound (synthesized via Web Audio API) ---
@@ -1163,5 +1366,6 @@
     dealBtnEl.addEventListener('click', onDeal);
     nodealBtnEl.addEventListener('click', onNoDeal);
     newGameBtnEl.addEventListener('click', initGame);
-    initGame();
+    setupInfoModal();
+    showLandingState();
 })();

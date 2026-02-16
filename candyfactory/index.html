@@ -34,6 +34,7 @@
                     <ul>
                         <li><span class="item-icon">&#x1F440;</span><span class="item-text">Watch the side boards &mdash; track which big candy piles are still in play.</span></li>
                         <li><span class="item-icon">&#x1F4AA;</span><span class="item-text">Reject low offers when the giant candy values haven't been opened yet!</span></li>
+                        <li><span class="item-icon">&#x1F4DE;</span><span class="item-text">Opening a huge candy box signals to the factory manager that your secret box can't hold that number, so expect lower offers right after a big reveal.</span></li>
                         <li><span class="item-icon">&#x1F4CA;</span><span class="item-text">Compare every offer to the <strong>EV</strong> (average) &mdash; is the manager being generous or stingy?</span></li>
                         <li><span class="item-icon">&#x1F914;</span><span class="item-text">Don't forget the final swap &mdash; sometimes switching is the winning move!</span></li>
                     </ul>
@@ -214,16 +215,28 @@
     </div>
     <header>
         <h1>CANDY FACTORY</h1>
-        <p>30 Candy Boxes &mdash; prizes from 1 candy up to 800,000 candies</p>
-        <p class="ev-note">Total candy pool 2,333,331 pieces (average stash 77,778 candies). Scale by 100 for classroom points: top box = 8,000 points/stickers.</p>
+        <p>30 Candy Boxes &mdash; prizes from 1 candy up to 800,000 candies are hidden in random order</p>
     </header>
 
     <div id="status"></div>
     <div id="round-info" class="round-info"></div>
     <div class="pick-timer" id="pick-timer"></div>
+    <div class="ev-bar" aria-hidden="true">
+        <div class="ev-bar-track">
+            <div class="ev-offer-markers" id="ev-offer-markers"></div>
+            <div class="ev-bar-pointer" id="ev-pointer"></div>
+        </div>
+        <div class="ev-bar-labels">
+            <span>Low</span>
+            <span>Mid</span>
+            <span>High</span>
+        </div>
+    </div>
     <div class="game-area">
         <div class="money-board" id="money-left"></div>
-        <div class="cases-grid" id="cases-grid"></div>
+        <div class="grid-panel">
+            <div class="cases-grid" id="cases-grid"></div>
+        </div>
         <div class="money-board" id="money-right"></div>
     </div>
 
@@ -259,17 +272,30 @@
         <div class="mode-toggle">
             <label class="mode-label" for="mode-select">&#x1F9EE; Mode:</label>
             <select id="mode-select" class="mode-select">
-                <option value="passive" selected>Passive &mdash; Watch the Math</option>
-                <option value="active">Active &mdash; Do the Math!</option>
+                <option value="passive">Passive &mdash; Watch the Math</option>
+                <option value="active" selected>Active &mdash; Do the Math!</option>
             </select>
         </div>
         <button id="new-game-btn">New Game</button>
     </div>
 
+    <section class="game-rules-card" aria-live="polite">
+        <h3>Game Rules</h3>
+        <p class="rules-card-summary">30 candy boxes &mdash; prizes from 1 candy up to 800,000 candies are hidden in random order. You keep one sealed, open the rest in rounds to reveal which candy piles are gone, and weigh every offer from the factory manager.</p>
+        <ul>
+            <li><span class="rules-icon">&#x1F381;</span><span class="rules-text">Pick one candy box to protect &mdash; it's your mystery stash.</span></li>
+            <li><span class="rules-icon">&#x1F4A1;</span><span class="rules-text">Each round open the required number of boxes to reveal the candies inside, shrinking the unknown pool so the offer can change.</span></li>
+            <li><span class="rules-icon">&#x1F4DE;</span><span class="rules-text">After every round the factory manager offers a trade. Accept to cash out or Reject to keep playing.</span></li>
+            <li><span class="rules-icon">&#x1F500;</span><span class="rules-text">When only two boxes remain, decide to keep yours or swap before discovering your final stash.</span></li>
+            <li><span class="rules-icon">&#x1F4B0;</span><span class="rules-text">Opening a giant candy box tells the factory manager your hidden box <strong>cannot</strong> hold that amount, so expect stingier offers after big reveals.</span></li>
+            <li><span class="rules-icon">&#x1F9EE;</span><span class="rules-text"><strong>Modes:</strong> Active Mode (default) hides the EV and stats until you answer mini challenges after each box &mdash; it's the best way to feel the math. Switch back to Passive any time to let the factory show you every number right away.</span></li>
+        </ul>
+    </section>
+
     <div id="math-score" class="math-score" style="display:none;">Math Score: 0 / 0</div>
 
     <section class="prob-tracker" id="prob-tracker">
-        <h3>&#x1F4CA; Probability Tracker</h3>
+        <h3 id="prob-title">&#x1F4CA; Probability Tracker</h3>
         <table>
             <thead>
                 <tr>
@@ -293,7 +319,9 @@
             <div class="math-input-row">
                 <input type="text" id="math-answer" class="math-answer" placeholder="Your answer..." autocomplete="off">
                 <button id="math-check" class="math-check-btn">Check</button>
+                <button id="math-hint" class="math-hint-btn" type="button">Hint (-0.5)</button>
             </div>
+            <div id="math-hint-note" class="math-hint-note"></div>
             <div id="math-feedback" class="math-feedback"></div>
         </div>
     </div>
