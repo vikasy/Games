@@ -65,10 +65,9 @@
 
     function loadProgress() {
         try {
-            var s = localStorage.getItem('primequest_progress');
+            var s = gameGet('pq_progress');
             if (s) {
                 state.levelProgress = JSON.parse(s);
-                // Migrate: pad if fewer entries than current level count
                 while (state.levelProgress.length < TOTAL_LEVELS)
                     state.levelProgress.push({unlocked: false, stars: 0, bestScore: 0});
                 state.levelProgress[0].unlocked = true;
@@ -81,7 +80,7 @@
     }
 
     function saveProgress() {
-        try { localStorage.setItem('primequest_progress', JSON.stringify(state.levelProgress)); } catch(e) {}
+        try { gameSet('pq_progress', JSON.stringify(state.levelProgress)); } catch(e) {}
     }
 
     // ═══ DOM ELEMENTS ════════════════════════════════════════════════════

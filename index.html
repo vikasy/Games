@@ -25,8 +25,41 @@
         }
         p.subtitle {
             color: #888;
-            margin-bottom: 40px;
+            margin-bottom: 16px;
         }
+
+        /* Profile picker */
+        .profile-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 28px;
+            font-size: 0.9rem;
+        }
+        .profile-bar label { color: #aaa; }
+        .profile-bar select {
+            background: #16213e;
+            color: #fff;
+            border: 1px solid #444;
+            border-radius: 6px;
+            padding: 4px 10px;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+        .profile-bar button {
+            background: #16213e;
+            color: #ffd700;
+            border: 1px solid #444;
+            border-radius: 6px;
+            padding: 4px 12px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .profile-bar button:hover { background: #1a2a50; }
+        .profile-bar .scores-btn { color: #7dffb3; }
+        .profile-bar .remove-btn { color: #f87171; font-size: 0.8rem; }
+
         .games {
             display: flex;
             gap: 24px;
@@ -64,11 +97,75 @@
             color: #888;
             line-height: 1.4;
         }
+
+        /* Leaderboard modal */
+        .lb-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+        .lb-overlay.open { display: flex; }
+        .lb-modal {
+            background: #16213e;
+            border: 2px solid #444;
+            border-radius: 16px;
+            padding: 28px 32px;
+            max-width: 520px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .lb-modal h2 {
+            color: #ffd700;
+            font-size: 1.2rem;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        .lb-modal table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        .lb-modal th {
+            color: #aaa;
+            text-align: left;
+            padding: 6px 8px;
+            border-bottom: 1px solid #333;
+            font-weight: 600;
+        }
+        .lb-modal td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #222;
+        }
+        .lb-modal .close-lb {
+            display: block;
+            margin: 16px auto 0;
+            background: none;
+            border: 1px solid #555;
+            color: #aaa;
+            border-radius: 6px;
+            padding: 6px 20px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        .lb-modal .close-lb:hover { color: #fff; border-color: #888; }
     </style>
 </head>
 <body>
     <h1>GAMES</h1>
     <p class="subtitle">Pick a game to play</p>
+
+    <div class="profile-bar" id="profile-bar">
+        <label>Playing as:</label>
+        <select id="profile-select"></select>
+        <button id="add-profile-btn">+ New</button>
+        <button id="remove-profile-btn" class="remove-btn" title="Remove current profile">x</button>
+        <button id="scores-btn" class="scores-btn">Scores</button>
+    </div>
 
     <div class="games">
         <a href="tictactoe/index.html" class="game-card">
@@ -96,6 +193,107 @@
         </a>
     </div>
 
+    <!-- Leaderboard overlay -->
+    <div class="lb-overlay" id="lb-overlay">
+        <div class="lb-modal">
+            <h2>Scores</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Player</th>
+                        <th>PQ Stars</th>
+                        <th>PQ Levels</th>
+                        <th>CF Games</th>
+                        <th>CF Candies</th>
+                    </tr>
+                </thead>
+                <tbody id="lb-body"></tbody>
+            </table>
+            <button class="close-lb" id="close-lb">Close</button>
+        </div>
+    </div>
+
     <footer style="margin-top:48px;color:#555;font-size:0.75rem;">&copy; 2017-2026 Vikas Yadav. All rights reserved.</footer>
+
+    <script src="storage.js"></script>
+    <script>
+    (function () {
+        var sel = document.getElementById('profile-select');
+        var addBtn = document.getElementById('add-profile-btn');
+        var removeBtn = document.getElementById('remove-profile-btn');
+        var scoresBtn = document.getElementById('scores-btn');
+        var overlay = document.getElementById('lb-overlay');
+        var lbBody = document.getElementById('lb-body');
+        var closeBtn = document.getElementById('close-lb');
+
+        function refreshDropdown() {
+            var profiles = getProfiles();
+            var active = getActivePlayer();
+            sel.innerHTML = '';
+            profiles.forEach(function (name) {
+                var opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                if (name === active) opt.selected = true;
+                sel.appendChild(opt);
+            });
+        }
+
+        sel.addEventListener('change', function () {
+            setActivePlayer(sel.value);
+        });
+
+        addBtn.addEventListener('click', function () {
+            var name = prompt('Enter player name:');
+            if (name && name.trim()) {
+                if (addProfile(name.trim())) {
+                    setActivePlayer(name.trim());
+                    refreshDropdown();
+                } else {
+                    alert('Profile already exists.');
+                }
+            }
+        });
+
+        removeBtn.addEventListener('click', function () {
+            var profiles = getProfiles();
+            if (profiles.length <= 1) {
+                alert('Cannot remove the last profile.');
+                return;
+            }
+            var active = getActivePlayer();
+            if (confirm('Remove profile "' + active + '" and all saved data?')) {
+                removeProfile(active);
+                refreshDropdown();
+            }
+        });
+
+        scoresBtn.addEventListener('click', function () {
+            var data = getLeaderboardData();
+            lbBody.innerHTML = '';
+            data.forEach(function (row) {
+                var tr = document.createElement('tr');
+                tr.innerHTML =
+                    '<td>' + row.name + '</td>' +
+                    '<td>' + row.pqStars + ' / 69</td>' +
+                    '<td>' + row.pqCompleted + ' / 23</td>' +
+                    '<td>' + row.cfGames + '</td>' +
+                    '<td>' + row.cfCandies.toLocaleString() + '</td>';
+                lbBody.appendChild(tr);
+            });
+            overlay.classList.add('open');
+        });
+
+        closeBtn.addEventListener('click', function () {
+            overlay.classList.remove('open');
+        });
+        overlay.addEventListener('click', function (e) {
+            if (e.target === overlay) overlay.classList.remove('open');
+        });
+
+        refreshDropdown();
+    })();
+    </script>
+    <script src="feedback.js"></script>
 </body>
 </html>

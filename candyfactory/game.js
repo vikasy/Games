@@ -109,6 +109,38 @@
     let infoModalInitialized = false;
     let currentGameNumber = 0;
 
+    // --- Persistence helpers ---
+    function loadSavedState() {
+        try {
+            var raw = gameGet('candy_history');
+            if (raw) {
+                var saved = JSON.parse(raw);
+                candyHistory.length = 0;
+                saved.forEach(function (e) { candyHistory.push(e); });
+            }
+        } catch (e) {}
+        try {
+            var gn = gameGet('candy_game_num');
+            if (gn !== null) currentGameNumber = parseInt(gn, 10) || 0;
+        } catch (e) {}
+        try {
+            var ms = gameGet('candy_math_score');
+            if (ms) {
+                var parsed = JSON.parse(ms);
+                mathScore.correct = parsed.correct || 0;
+                mathScore.total = parsed.total || 0;
+            }
+        } catch (e) {}
+    }
+
+    function saveState() {
+        try {
+            gameSet('candy_history', JSON.stringify(candyHistory));
+            gameSet('candy_game_num', String(currentGameNumber));
+            gameSet('candy_math_score', JSON.stringify(mathScore));
+        } catch (e) {}
+    }
+
     function initGame() {
         currentGameNumber += 1;
         rulesCardEl?.classList.add('hidden');
@@ -561,6 +593,7 @@ function autoOpenCase() {
             otherValue: isDeal ? null : otherValue,
             gameNumber: currentGameNumber
         });
+        saveState();
         lastDecisionType = 'keep';
         resetProbabilityTracker();
         probTrackerEl?.classList.remove('revealed');
@@ -1346,5 +1379,7 @@ function showPostOpenChallenge(idx, remainingToOpen, autoOpened = false) {
     nodealBtnEl.addEventListener('click', onNoDeal);
     newGameBtnEl.addEventListener('click', initGame);
     setupInfoModal();
+    loadSavedState();
+    renderCandyHistory();
     showLandingState();
 })();
