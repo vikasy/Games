@@ -5,8 +5,7 @@
 (function () {
     'use strict';
 
-    var EMAIL = 'vikasy@gmail.com';
-    var ACTION = 'https://formsubmit.co/' + EMAIL;
+    var ACTION = 'https://formsubmit.co/d3dc48c82ee6ee7d717bc5c9ec33f98b';
     var page = document.title || 'Unknown Page';
 
     // --- Inject styles ---
