@@ -813,6 +813,17 @@ a.back:hover { color: #fff; }
     text-align: center;
 }
 
+/* ─── Touch targets ─────────────────────────────────────── */
+.action-btn,
+.side-btn,
+#deal-btn,
+#rankings-btn {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    min-height: 44px;
+}
+
+/* ─── Responsive ────────────────────────────────────────── */
 @media (max-width: 600px) {
     .hand-tooltip {
         top: calc(100% + 6px);
@@ -820,6 +831,56 @@ a.back:hover { color: #fff; }
     }
     .side-btn { width: 48px; height: 48px; font-size: 0.65rem; }
     #rankings-btn { font-size: 1.2rem; }
+    .table {
+        padding: 16px 20px;
+        border-radius: 80px;
+    }
+    .card {
+        width: 48px;
+        height: 68px;
+    }
+    .card .face { font-size: 1rem; }
+    .card .suit { font-size: 1.1rem; }
+}
+
+@media (max-width: 480px) {
+    header h1 { font-size: 1.5rem; }
+    #poker-subtitle { font-size: 0.8rem; }
+    .table {
+        padding: 12px 16px;
+        border-radius: 60px;
+        min-height: 200px;
+    }
+    .card {
+        width: 42px;
+        height: 60px;
+    }
+    .card .face { font-size: 0.9rem; }
+    .card .suit { font-size: 1rem; }
+    .cards { gap: 4px; }
+    .actions {
+        flex-direction: column;
+        gap: 6px;
+        align-items: stretch;
+    }
+    .action-btn {
+        width: 100%;
+        padding: 12px 16px;
+    }
+    .raise-group {
+        width: 100%;
+        justify-content: center;
+    }
+    .raise-group input {
+        flex: 1;
+        max-width: 100px;
+    }
+    .controls {
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+    .pot-display { font-size: 0.85rem; }
+    .pot-breakdown { font-size: 0.75rem; }
 }
 .controls .side-btn {
     margin: 0 18px;

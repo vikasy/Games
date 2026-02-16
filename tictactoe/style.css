@@ -1318,3 +1318,80 @@ a.back:hover { color: #fff; }
 .icon-toggle-label {
     white-space: nowrap;
 }
+
+/* ─── Touch targets ─────────────────────────────────────── */
+.cell,
+.action-icon-btn,
+#new-game,
+.toss-button,
+.icon-toggle {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.action-icon-btn {
+    min-width: 44px;
+    min-height: 44px;
+}
+
+/* ─── Responsive ────────────────────────────────────────── */
+@media (max-width: 600px) {
+    .board-layout {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        justify-items: center;
+    }
+    .move-column {
+        display: none;
+    }
+    .cell {
+        width: 60px;
+        height: 60px;
+        font-size: 1.6rem;
+    }
+    .controls {
+        gap: 6px;
+    }
+    .controls select {
+        padding: 6px 8px;
+        font-size: 0.8rem;
+    }
+    .controls label {
+        font-size: 0.8rem;
+    }
+    .scoreboard {
+        gap: 16px;
+    }
+    .learning-panel {
+        width: 95%;
+    }
+    .board-history-panel {
+        width: 95%;
+    }
+}
+
+@media (max-width: 480px) {
+    header h1 { font-size: 1.6rem; letter-spacing: 2px; }
+    .cell {
+        width: 50px;
+        height: 50px;
+        font-size: 1.3rem;
+        border-radius: 8px;
+    }
+    #board { gap: 3px; }
+    .game-actions {
+        gap: 6px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    .game-actions button {
+        font-size: 0.85rem;
+        padding: 6px 12px;
+    }
+    .toss-result {
+        font-size: 0.75rem;
+    }
+    .scoreboard .value {
+        font-size: 1.2rem;
+    }
+}
