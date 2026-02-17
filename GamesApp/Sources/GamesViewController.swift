@@ -12,8 +12,9 @@ class GamesViewController: UIViewController, WKNavigationDelegate, WKScriptMessa
         config.allowsInlineMediaPlayback = true
         config.userContentController.add(self, name: "haptic")
         config.userContentController.add(self, name: "nativeShare")
+        config.userContentController.add(self, name: "jsLog")
 
-        // Inject JS bridge for haptic feedback and native share
+        // Inject JS bridge for haptic feedback, native share, and error logging
         let bridgeJS = """
         window.nativeBridge = {
             haptic: function(style) {
@@ -22,6 +23,30 @@ class GamesViewController: UIViewController, WKNavigationDelegate, WKScriptMessa
             share: function(text) {
                 window.webkit.messageHandlers.nativeShare.postMessage(text || document.title);
             }
+        };
+        // Forward JS errors to native console
+        window.onerror = function(msg, source, line, col, error) {
+            var info = msg + ' at ' + (source || '?') + ':' + line + ':' + col;
+            if (error && error.stack) { info += '\\n' + error.stack; }
+            window.webkit.messageHandlers.jsLog.postMessage('ERROR: ' + info);
+            return false;
+        };
+        window.addEventListener('unhandledrejection', function(e) {
+            var reason = e.reason ? (e.reason.stack || String(e.reason)) : 'unknown';
+            window.webkit.messageHandlers.jsLog.postMessage('PROMISE REJECT: ' + reason);
+        });
+        // Also capture console.error and console.warn
+        var origError = console.error;
+        var origWarn = console.warn;
+        console.error = function() {
+            var args = Array.prototype.slice.call(arguments).join(' ');
+            window.webkit.messageHandlers.jsLog.postMessage('console.error: ' + args);
+            origError.apply(console, arguments);
+        };
+        console.warn = function() {
+            var args = Array.prototype.slice.call(arguments).join(' ');
+            window.webkit.messageHandlers.jsLog.postMessage('console.warn: ' + args);
+            origWarn.apply(console, arguments);
         };
         // Auto-add haptic to all game card taps
         document.addEventListener('click', function(e) {
@@ -71,6 +96,9 @@ class GamesViewController: UIViewController, WKNavigationDelegate, WKScriptMessa
         case "nativeShare":
             let text = message.body as? String ?? "Lab City Fun Academy"
             showShareSheet(text: text)
+        case "jsLog":
+            let msg = message.body as? String ?? ""
+            print("[WebView JS] \(msg)")
         default:
             break
         }
