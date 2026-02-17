@@ -3,3 +3,12 @@ playpoker/poker_advisor
 *.o
 *.exe
 .DS_Store
+
+# Xcode build artifacts
+GamesApp/build/
+GamesApp/GamesApp.xcodeproj/project.xcworkspace/xcuserdata/
+GamesApp/GamesApp.xcodeproj/xcuserdata/
+
+# Generated icon PNGs (keep source scripts in tools/)
+GamesApp/fa_arcade_icon*.png
+fa_arcade_icon*.png
