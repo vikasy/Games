@@ -12,16 +12,20 @@ body {
 
 header {
     text-align: center;
-    padding: 20px 16px 4px;
+    padding: 12px 16px 4px;
 }
 
 header h1 {
-    font-size: 2rem;
+    font-size: 1.8rem;
     color: #ffd700;
     letter-spacing: 3px;
+    margin-bottom: 6px;
 }
 
-header p { color: #a88; margin-top: 4px; }
+header .controls {
+    margin: 4px 0 0;
+    gap: 8px;
+}
 
 .ev-note {
     font-size: 0.85rem;
@@ -41,13 +45,13 @@ a.back {
 a.back:hover { color: #fff; }
 
 .info-btn {
-    width: 38px;
-    height: 38px;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
     border: none;
     background: #ff7eb6;
     color: #fff;
-    font-size: 1.3rem;
+    font-size: 1rem;
     font-weight: 700;
     cursor: pointer;
     box-shadow: 0 4px 12px rgba(255, 126, 182, 0.4);
@@ -464,11 +468,12 @@ a.back:hover { color: #fff; }
 
 .game-area {
     display: flex;
-    gap: 20px;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 8px;
     margin: 12px auto;
-    max-width: 900px;
+    max-width: 600px;
     width: 95%;
-    flex-wrap: wrap;
     justify-content: center;
 }
 
@@ -476,6 +481,9 @@ a.back:hover { color: #fff; }
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
+    flex: 1;
+    min-width: 0;
 }
 
 .ev-bar {
@@ -558,16 +566,17 @@ a.back:hover { color: #fff; }
 .money-board {
     display: flex;
     flex-direction: column;
-    gap: 3px;
-    min-width: 140px;
+    gap: 2px;
+    min-width: 70px;
+    max-width: 90px;
 }
 
 .money-row {
     display: flex;
     align-items: center;
-    padding: 4px 10px;
+    padding: 3px 6px;
     border-radius: 4px;
-    font-size: 0.8rem;
+    font-size: 0.65rem;
     font-weight: 600;
     transition: opacity 0.3s, background 0.3s;
 }
@@ -590,21 +599,22 @@ a.back:hover { color: #fff; }
 /* Boxes grid */
 .cases-grid {
     display: grid;
-    grid-template-columns: repeat(6, minmax(70px, 1fr));
-    gap: 12px;
-    flex: 1;
-    min-width: 340px;
-    max-width: 500px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px 16px;
+    min-width: 0;
+    max-width: 320px;
+    width: 100%;
+    margin: 0 auto;
 }
 
 .case-btn {
-    width: 68px;
-    height: 52px;
+    width: 100%;
+    height: 44px;
     border: 2px solid #ff8fa3;
     border-radius: 10px;
     background: linear-gradient(145deg, #ffd1dc 0%, #ff84b1 40%, #ff5a8c 100%);
     color: #fff;
-    font-size: 1.15rem;
+    font-size: 1.05rem;
     font-weight: 800;
     cursor: pointer;
     transition: transform 0.15s, opacity 0.3s, background 0.3s, box-shadow 0.3s;
@@ -614,20 +624,50 @@ a.back:hover { color: #fff; }
     position: relative;
     box-shadow: 0 4px 12px rgba(255, 100, 160, 0.35),
                 inset 0 2px 6px rgba(255,255,255,0.25);
-    margin: 8px 14px;
+    margin: 0;
     z-index: 1;
+    overflow: visible;
+    min-width: 0;
 }
+/* Candy color variants — cycle through 4 colors matching 4-column grid */
+.case-btn:nth-child(4n+1) {
+    background: linear-gradient(145deg, #ffd1dc 0%, #ff84b1 40%, #ff5a8c 100%);
+    border-color: #ff8fa3;
+}
+.case-btn:nth-child(4n+2) {
+    background: linear-gradient(145deg, #d1f0ff 0%, #5bb8f5 40%, #3a8fd4 100%);
+    border-color: #6ab0ff;
+}
+.case-btn:nth-child(4n+3) {
+    background: linear-gradient(145deg, #d4ffd4 0%, #6bcf6b 40%, #4aaf4a 100%);
+    border-color: #7dca7d;
+}
+.case-btn:nth-child(4n+4) {
+    background: linear-gradient(145deg, #fff3d1 0%, #f5c84b 40%, #e0a820 100%);
+    border-color: #f0c040;
+}
+
+/* Twist colors match candy */
+.case-btn:nth-child(4n+1)::before { background: linear-gradient(135deg, #ffb3c6, #ff6b8a); }
+.case-btn:nth-child(4n+1)::after { background: linear-gradient(225deg, #ffb3c6, #ff6b8a); }
+.case-btn:nth-child(4n+2)::before { background: linear-gradient(135deg, #a3d4ff, #4a9ee0); }
+.case-btn:nth-child(4n+2)::after { background: linear-gradient(225deg, #a3d4ff, #4a9ee0); }
+.case-btn:nth-child(4n+3)::before { background: linear-gradient(135deg, #a3efa3, #4aaf4a); }
+.case-btn:nth-child(4n+3)::after { background: linear-gradient(225deg, #a3efa3, #4aaf4a); }
+.case-btn:nth-child(4n+4)::before { background: linear-gradient(135deg, #ffe08a, #e0a820); }
+.case-btn:nth-child(4n+4)::after { background: linear-gradient(225deg, #ffe08a, #e0a820); }
+
 /* Left twist */
 .case-btn::before {
     content: '';
     position: absolute;
-    left: -14px;
+    left: -6px;
     top: 50%;
     transform: translateY(-50%) rotate(-15deg);
-    width: 16px;
-    height: 22px;
+    width: 8px;
+    height: 14px;
     background: linear-gradient(135deg, #ffb3c6, #ff6b8a);
-    border-radius: 4px 0 0 4px;
+    border-radius: 3px 0 0 3px;
     clip-path: polygon(100% 15%, 100% 85%, 30% 100%, 0% 70%, 0% 30%, 30% 0%);
     z-index: -1;
 }
@@ -635,13 +675,13 @@ a.back:hover { color: #fff; }
 .case-btn::after {
     content: '';
     position: absolute;
-    right: -14px;
+    right: -6px;
     top: 50%;
     transform: translateY(-50%) rotate(15deg);
-    width: 16px;
-    height: 22px;
+    width: 8px;
+    height: 14px;
     background: linear-gradient(225deg, #ffb3c6, #ff6b8a);
-    border-radius: 0 4px 4px 0;
+    border-radius: 0 3px 3px 0;
     clip-path: polygon(0% 15%, 0% 85%, 70% 100%, 100% 70%, 100% 30%, 70% 0%);
     z-index: -1;
 }
@@ -707,19 +747,31 @@ a.back:hover { color: #fff; }
     min-height: 1.4em;
 }
 
+.offer-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.5);
+}
+
+.offer-backdrop.visible { display: flex; }
+
 .offer-box {
     background: #2a1a3e;
     border: 3px solid #ffd700;
     border-radius: 12px;
     padding: 20px 32px;
     text-align: center;
-    margin: 8px auto;
     max-width: 360px;
-    display: none;
+    width: 90%;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.7);
+    animation: offerIn 0.5s;
 }
 
-.offer-box.visible { display: block; animation: fadeIn 0.5s; }
-
+@keyframes offerIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
 @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
 
 .offer-box h2 {
@@ -1084,10 +1136,10 @@ a.back:hover { color: #fff; }
 .candy-history-card.reject { border-color: #ff8fa3; }
 
 .controls button {
-    padding: 10px 28px;
+    padding: 6px 16px;
     border: none;
-    border-radius: 8px;
-    font-size: 1rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
     font-weight: 700;
     cursor: pointer;
     background: #ffd700;
@@ -1183,24 +1235,24 @@ a.back:hover { color: #fff; }
 .mode-toggle {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 10px;
+    gap: 4px;
+    margin-bottom: 0;
 }
 
 .mode-label {
-    font-size: 0.9rem;
+    font-size: 0.75rem;
     font-weight: 700;
     color: #ffe066;
     letter-spacing: 0.5px;
 }
 
 .mode-select {
-    padding: 8px 32px 8px 14px;
-    border: 2px solid #ffe066;
-    border-radius: 10px;
+    padding: 5px 24px 5px 8px;
+    border: 1px solid #ffe066;
+    border-radius: 6px;
     background: rgba(255, 255, 255, 0.08);
     color: #ffe066;
-    font-size: 0.9rem;
+    font-size: 0.75rem;
     font-weight: 700;
     cursor: pointer;
     outline: none;
@@ -1343,6 +1395,23 @@ a.back:hover { color: #fff; }
     cursor: not-allowed;
 }
 
+.math-pass-btn {
+    padding: 8px 16px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 100, 100, 0.4);
+    background: rgba(255, 100, 100, 0.15);
+    color: #ff9999;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+
+.math-pass-btn:hover {
+    background: rgba(255, 100, 100, 0.3);
+    color: #fff;
+}
+
 .math-hint-note {
     font-size: 0.85rem;
     color: #a2ffe0;
@@ -1409,34 +1478,11 @@ body.active-math-mode .prob-tracker.revealed {
 
 /* ─── Responsive ────────────────────────────────────────── */
 @media (max-width: 600px) {
-    .game-area {
-        flex-direction: column;
-        align-items: center;
-        gap: 12px;
-    }
-    .money-board {
-        flex-direction: row;
-        flex-wrap: wrap;
-        justify-content: center;
-        min-width: unset;
-        width: 100%;
-        gap: 2px;
-    }
-    .money-row {
-        font-size: 0.7rem;
-        padding: 3px 6px;
-    }
-    .cases-grid {
-        grid-template-columns: repeat(5, minmax(58px, 1fr));
-        gap: 8px;
-        min-width: unset;
-        max-width: 340px;
-    }
-    .case-btn {
-        width: 58px;
-        height: 46px;
-        font-size: 1rem;
-    }
+    .game-area { gap: 4px; }
+    .money-board { min-width: 65px; max-width: 75px; }
+    .money-row { font-size: 0.6rem; padding: 2px 4px; }
+    .cases-grid { gap: 4px 12px; max-width: 260px; }
+    .case-btn { height: 38px; font-size: 0.9rem; }
     .offer-box h2 { font-size: 1rem; }
     .info-content { padding: 16px 12px; }
     .ev-bar { width: 98%; }
@@ -1445,19 +1491,22 @@ body.active-math-mode .prob-tracker.revealed {
 @media (max-width: 480px) {
     header h1 { font-size: 1.5rem; letter-spacing: 1px; }
     header p { font-size: 0.75rem; }
+    .money-board {
+        min-width: 60px;
+        max-width: 70px;
+    }
     .cases-grid {
-        grid-template-columns: repeat(3, minmax(68px, 1fr));
-        gap: 8px;
-        max-width: 260px;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 4px 10px;
+        max-width: 220px;
     }
     .case-btn {
-        width: 68px;
-        height: 48px;
-        font-size: 1rem;
+        height: 36px;
+        font-size: 0.85rem;
     }
     .money-row {
-        font-size: 0.65rem;
-        padding: 2px 5px;
+        font-size: 0.55rem;
+        padding: 2px 3px;
     }
     .candy-stats {
         gap: 4px;

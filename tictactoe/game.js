@@ -1041,7 +1041,10 @@
     // --- Sound effects (Web Audio API) ---
     let audioCtx = null;
     function ensureAudio() {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (!audioCtx) {
+            audioCtx = window._audioBlessed || new (window.AudioContext || window.webkitAudioContext)();
+            window.audioCtx = audioCtx;
+        }
         if (audioCtx.state === 'suspended') audioCtx.resume();
     }
 

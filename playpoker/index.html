@@ -20,11 +20,28 @@
     <div class="table">
         <div class="community">
             <h3>Community Cards</h3>
-            <div class="cards" id="community-cards"></div>
+            <div class="community-row">
+                <button id="my-hand-btn" class="side-btn" title="Evaluate your hand">My Hand</button>
+                <div class="cards" id="community-cards"></div>
+                <button id="rankings-btn" class="side-btn" title="Hand rankings reference">?</button>
+            </div>
         </div>
-        <div class="pot-info">
-            <div id="pot-display" class="pot-display"></div>
-            <div id="pot-breakdown" class="pot-breakdown"></div>
+        <div class="pot-actions-row">
+            <div class="actions-left" id="actions-left">
+                <button id="fold-btn" class="action-btn fold">Fold</button>
+                <button id="check-btn" class="action-btn call">Check</button>
+            </div>
+            <div class="pot-info">
+                <div id="pot-display" class="pot-display"></div>
+                <div id="pot-breakdown" class="pot-breakdown"></div>
+            </div>
+            <div class="actions-right" id="actions-right">
+                <button id="call-btn" class="action-btn call">Call</button>
+                <div class="raise-group">
+                    <button id="raise-btn" class="action-btn raise">Raise</button>
+                    <input type="number" id="raise-amount" min="20" value="20" step="10">
+                </div>
+            </div>
         </div>
         <div class="players" id="players"></div>
     </div>
@@ -33,7 +50,6 @@
     <div id="tie-break-info" class="tie-break-info" style="display:none;"></div>
 
     <div class="controls">
-        <button id="my-hand-btn" class="side-btn" title="Evaluate your hand">My Hand</button>
         <div class="difficulty-group">
             <label for="difficulty-select">Difficulty:</label>
             <select id="difficulty-select">
@@ -43,18 +59,7 @@
             </select>
         </div>
         <button id="deal-btn">Deal</button>
-        <button id="rankings-btn" class="side-btn" title="Hand rankings reference">?</button>
         <div id="hand-tooltip" class="hand-tooltip" style="display:none"></div>
-    </div>
-
-    <div class="actions" id="actions">
-        <button id="fold-btn" class="action-btn fold">Fold</button>
-        <button id="check-btn" class="action-btn call">Check</button>
-        <button id="call-btn" class="action-btn call">Call</button>
-        <div class="raise-group">
-            <button id="raise-btn" class="action-btn raise">Raise</button>
-            <input type="number" id="raise-amount" min="20" value="20" step="10">
-        </div>
     </div>
 
     <div class="hand-history-panel" id="info-panel">
@@ -63,7 +68,7 @@
         <div id="game-rules" style="display:none">
         <p>Welcome to Texas Hold'em! Here's how to play:</p>
             <ol>
-                <li><strong>Pick your difficulty</strong> and press <strong>Deal</strong>.</li>
+                <li><strong>Pick your difficulty</strong> and press <strong>Play</strong>.</li>
                 <li>You get 2 secret cards. Decide to <em>check</em>, <em>call</em>, <em>raise</em>, or <em>fold</em>.</li>
                 <li>Watch the shared cards (flop, turn, river) appear on the table.</li>
                 <li>Make the best 5-card hand using your 2 cards + the shared cards.</li>

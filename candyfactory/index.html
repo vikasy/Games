@@ -106,7 +106,7 @@
                         <div class="math-card" style="--accent: #ffd700;">
                             <div class="math-card-head"><span class="mc-icon">&#x1F4B0;</span> Mean = Average = EV</div>
                             <div class="math-formula">Mean = Sum of all values &divide; How many values</div>
-                            <div class="math-example">Game start: 2,333,331 &divide; 30 = <strong>77,778 candies</strong></div>
+                            <div class="math-example">Game start: 2,333,310 &divide; 25 = <strong>93,332 candies</strong></div>
                             <div class="math-example">Boxes 10, 20, 30: Mean = (10+20+30) &divide; 3 = <strong>20</strong></div>
                             <div class="math-example">Boxes 50, 50, 50: Mean = 150 &divide; 3 = <strong>50</strong>. All same values &rarr; mean = median = every value!</div>
                             <div class="math-intuition">&#x1F4A1; If you played 1,000 games and always kept your box, your average winnings would land near the EV. That's why a fair offer should be close to the mean!</div>
@@ -218,7 +218,17 @@
     </div>
     <header>
         <h1>CANDY FACTORY</h1>
-        <p>30 Candy Boxes &mdash; prizes from 1 candy up to 800,000 candies are hidden in random order</p>
+        <div class="controls">
+            <button class="info-btn" id="info-btn">?</button>
+            <div class="mode-toggle">
+                <label class="mode-label" for="mode-select">Mode:</label>
+                <select id="mode-select" class="mode-select">
+                    <option value="passive">Passive &mdash; Watch the Math</option>
+                    <option value="active" selected>Active &mdash; Do the Math!</option>
+                </select>
+            </div>
+            <button id="new-game-btn">New Game</button>
+        </div>
     </header>
 
     <div id="status"></div>
@@ -243,12 +253,14 @@
         <div class="money-board" id="money-right"></div>
     </div>
 
-    <div class="offer-box" id="offer-box">
-        <h2>FACTORY MANAGER'S OFFER</h2>
-        <div class="amount" id="offer-amount">0 candies</div>
-        <div class="buttons">
-            <button id="deal-btn">Accept</button>
-            <button id="nodeal-btn">Reject</button>
+    <div class="offer-backdrop" id="offer-backdrop">
+        <div class="offer-box" id="offer-box">
+            <h2>FACTORY MANAGER'S OFFER</h2>
+            <div class="amount" id="offer-amount">0 &#x1F36C;</div>
+            <div class="buttons">
+                <button id="deal-btn">Accept</button>
+                <button id="nodeal-btn">Reject</button>
+            </div>
         </div>
     </div>
 
@@ -270,21 +282,9 @@
         <div class="stat-note" id="equally-note">&#x1F4A1; All unopened boxes equally likely</div>
     </div>
 
-    <div class="controls">
-        <button class="info-btn" id="info-btn">?</button>
-        <div class="mode-toggle">
-            <label class="mode-label" for="mode-select">&#x1F9EE; Mode:</label>
-            <select id="mode-select" class="mode-select">
-                <option value="passive">Passive &mdash; Watch the Math</option>
-                <option value="active" selected>Active &mdash; Do the Math!</option>
-            </select>
-        </div>
-        <button id="new-game-btn">New Game</button>
-    </div>
-
     <section class="game-rules-card" aria-live="polite">
         <h3>Game Rules</h3>
-        <p class="rules-card-summary">30 candy boxes &mdash; prizes from 1 candy up to 800,000 candies are hidden in random order. You keep one sealed, open the rest in rounds to reveal which candy piles are gone, and weigh every offer from the factory manager.</p>
+        <p class="rules-card-summary">25 candy boxes &mdash; prizes from 10 candies up to 800,000 candies are hidden in random order. You keep one sealed, open the rest in rounds to reveal which candy piles are gone, and weigh every offer from the factory manager.</p>
         <ul>
             <li><span class="rules-icon">&#x1F381;</span><span class="rules-text">Pick one candy box to protect &mdash; it's your mystery stash.</span></li>
             <li><span class="rules-icon">&#x1F4A1;</span><span class="rules-text">Each round open the required number of boxes to reveal the candies inside, shrinking the unknown pool so the offer can change.</span></li>
@@ -322,7 +322,8 @@
             <div class="math-input-row">
                 <input type="text" id="math-answer" class="math-answer" placeholder="Your answer..." autocomplete="off">
                 <button id="math-check" class="math-check-btn">Check</button>
-                <button id="math-hint" class="math-hint-btn" type="button">Hint (-0.5)</button>
+                <button id="math-hint" class="math-hint-btn" type="button">Hint</button>
+                <button id="math-pass" class="math-pass-btn" type="button">Pass</button>
             </div>
             <div id="math-hint-note" class="math-hint-note"></div>
             <div id="math-feedback" class="math-feedback"></div>

@@ -1,7 +1,7 @@
 import UIKit
 import WebKit
 
-class GameWebViewController: UIViewController, WKNavigationDelegate, WKScriptMessageHandler {
+class GameWebViewController: UIViewController, WKNavigationDelegate, WKScriptMessageHandler, WKUIDelegate {
     var gamePath: String = ""
     var gameTitle: String = ""
 
@@ -15,11 +15,24 @@ class GameWebViewController: UIViewController, WKNavigationDelegate, WKScriptMes
 
         let config = WKWebViewConfiguration()
         config.allowsInlineMediaPlayback = true
+        config.mediaTypesRequiringUserActionForPlayback = []
         config.userContentController.add(self, name: "haptic")
         config.userContentController.add(self, name: "nativeShare")
         config.userContentController.add(self, name: "jsLog")
         config.userContentController.add(self, name: "goBack")
 
+        // --- 1. Viewport zoom lock (runs before page renders) ---
+        let viewportJS = """
+        (function() {
+            var meta = document.querySelector('meta[name="viewport"]');
+            if (!meta) { meta = document.createElement('meta'); meta.name = 'viewport'; document.head.appendChild(meta); }
+            meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
+        })();
+        """
+        let viewportScript = WKUserScript(source: viewportJS, injectionTime: .atDocumentStart, forMainFrameOnly: false)
+        config.userContentController.addUserScript(viewportScript)
+
+        // --- Native bridge + error forwarding (atDocumentEnd) ---
         let bridgeJS = """
         window.nativeBridge = {
             haptic: function(style) {
@@ -61,13 +74,23 @@ class GameWebViewController: UIViewController, WKNavigationDelegate, WKScriptMes
         let bridgeScript = WKUserScript(source: bridgeJS, injectionTime: .atDocumentEnd, forMainFrameOnly: false)
         config.userContentController.addUserScript(bridgeScript)
 
+        // --- 2-5. Injected CSS: hide artifacts, kill hover, system font, safe area ---
         let polishCSS = """
         (function() {
             var style = document.createElement('style');
             style.textContent = '\\
                 a.back { display: none !important; } \\
                 * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; } \\
-                input, textarea, select { -webkit-user-select: auto; user-select: auto; }\\
+                input, textarea, select { -webkit-user-select: auto; user-select: auto; } \\
+                footer.copyright { display: none !important; } \\
+                ::-webkit-scrollbar { display: none !important; } \\
+                @media (hover: none) and (pointer: coarse) { \\
+                    *:hover { transform: none !important; } \\
+                } \\
+                body, button, input, select, textarea { \\
+                    font-family: -apple-system, "SF Pro Display", system-ui, sans-serif !important; \\
+                } \\
+                body { padding-bottom: env(safe-area-inset-bottom, 0px) !important; } \\
             ';
             document.head.appendChild(style);
 
@@ -83,18 +106,81 @@ class GameWebViewController: UIViewController, WKNavigationDelegate, WKScriptMes
         let polishScript = WKUserScript(source: polishCSS, injectionTime: .atDocumentEnd, forMainFrameOnly: false)
         config.userContentController.addUserScript(polishScript)
 
+        // --- 9. Keyboard dismiss on tap outside ---
+        let keyboardJS = """
+        document.addEventListener('touchstart', function(e) {
+            if (!['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) {
+                document.activeElement && document.activeElement.blur();
+            }
+        });
+        """
+        let keyboardScript = WKUserScript(source: keyboardJS, injectionTime: .atDocumentEnd, forMainFrameOnly: false)
+        config.userContentController.addUserScript(keyboardScript)
+
+        // --- Audio unlock: iOS requires AudioContext.resume() during a direct user gesture ---
+        // Creates a blessed AudioContext on first gesture, saves it as window._audioBlessed.
+        // Games reuse this context so audio works immediately.
+        // Keeps listening to resume any suspended contexts on subsequent gestures.
+        let audioUnlockJS = """
+        (function() {
+            var Ctx = window.AudioContext || window.webkitAudioContext;
+            if (!Ctx) return;
+            function unlock() {
+                // Create and bless a shared context on first gesture
+                if (!window._audioBlessed) {
+                    var a = new Ctx();
+                    var b = a.createBuffer(1, 1, 22050);
+                    var s = a.createBufferSource();
+                    s.buffer = b;
+                    s.connect(a.destination);
+                    s.start(0);
+                    a.resume();
+                    window._audioBlessed = a;
+                    window._audioUnlocked = true;
+                } else if (window._audioBlessed.state === 'suspended') {
+                    window._audioBlessed.resume();
+                }
+                // Resume any game-created context
+                if (window.audioCtx && window.audioCtx !== window._audioBlessed && window.audioCtx.state === 'suspended') {
+                    window.audioCtx.resume();
+                }
+            }
+            document.addEventListener('touchstart', unlock, {capture: true});
+            document.addEventListener('touchend', unlock, {capture: true});
+            document.addEventListener('click', unlock, {capture: true});
+        })();
+        """
+        let audioUnlockScript = WKUserScript(source: audioUnlockJS, injectionTime: .atDocumentEnd, forMainFrameOnly: false)
+        config.userContentController.addUserScript(audioUnlockScript)
+
         webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = self
+        webView.uiDelegate = self // 7. Context menu suppression
         webView.isOpaque = false
         webView.backgroundColor = view.backgroundColor
         webView.scrollView.backgroundColor = view.backgroundColor
         webView.scrollView.bounces = false
         webView.translatesAutoresizingMaskIntoConstraints = false
 
+        // --- 6. Scroll view refinements ---
+        webView.scrollView.showsVerticalScrollIndicator = false
+        webView.scrollView.showsHorizontalScrollIndicator = false
+        webView.scrollView.alwaysBounceVertical = false
+        webView.scrollView.alwaysBounceHorizontal = false
+
+        // --- 8. Fade-in: start invisible ---
+        webView.alpha = 0
+
+        // --- 11. Debug Web Inspector ---
+        #if DEBUG
+        if #available(iOS 16.4, *) { webView.isInspectable = true }
+        #endif
+
         view.addSubview(webView)
+        // --- 5. Safe area bottom: extend to view edge ---
         NSLayoutConstraint.activate([
             webView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            webView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
+            webView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             webView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             webView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
         ])
@@ -173,10 +259,15 @@ class GameWebViewController: UIViewController, WKNavigationDelegate, WKScriptMes
 
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         spinner.stopAnimating()
+        // --- 8. Smooth fade-in ---
+        UIView.animate(withDuration: 0.25) {
+            self.webView.alpha = 1
+        }
     }
 
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
         spinner.stopAnimating()
+        webView.alpha = 1
     }
 
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
@@ -192,6 +283,17 @@ class GameWebViewController: UIViewController, WKNavigationDelegate, WKScriptMes
         }
         decisionHandler(.allow)
     }
+
+    // MARK: - WKUIDelegate (Context Menu Suppression)
+
+    func webView(_ webView: WKWebView,
+                 contextMenuConfigurationFor elementInfo: WKContextMenuElementInfo) async -> UIContextMenuConfiguration? {
+        return nil
+    }
+
+    // MARK: - Orientation
+
+    override var supportedInterfaceOrientations: UIInterfaceOrientationMask { .portrait }
 
     override var prefersStatusBarHidden: Bool { false }
     override var preferredStatusBarStyle: UIStatusBarStyle { .lightContent }

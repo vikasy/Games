@@ -5,7 +5,6 @@
 (function () {
     const pName = typeof getActivePlayer === 'function' ? getActivePlayer() : 'You';
     const CASE_MONIES = [
-        1, 2, 4, 6, 8,
         10, 20, 40, 60, 80,
         100, 200, 400, 600, 800,
         1000, 2000, 4000, 6000, 8000,
@@ -17,12 +16,12 @@
     const INITIAL_EV = TOTAL_SUM / NUM_CASES;
     const MIN_EV = Math.min(...CASE_MONIES);
     const MAX_EV = Math.max(...CASE_MONIES);
-    const POINTER_MIN_EV = 100;
+    const POINTER_MIN_EV = 10;
     const POINTER_MAX_EV = MAX_EV;
     const POINTER_T = 150000;
     const POINTER_LINEAR_PORTION = 0.65;
-    // Boxes to open per round (player opens 28 total)
-    const NCASE_TO_OPEN = [7, 6, 5, 4, 3, 2, 1];
+    // Boxes to open per round (player opens 23 total, rounds 1-2 repeat)
+    const NCASE_TO_OPEN = [6, 6, 4, 4, 2, 1];
     const NUM_ROUNDS = NCASE_TO_OPEN.length;
     const NUM_OFFERS = NUM_ROUNDS - 1; // final round is swap/keep, no banker offer
 
@@ -34,7 +33,14 @@
         [0.50, 0.65],
         [0.60, 0.75]
     ];
-    const CHALLENGE_POOL = ['total', 'ev', 'probability', 'total', 'boxCount', 'ev', 'probability'];
+    const CHALLENGE_POOL = [
+        'total', 'ev', 'probability', 'boxCount',
+        'range', 'lowCount', 'fraction', 'double',
+        'halfEv', 'maxLeft', 'minLeft', 'sumTwo',
+        'pctEliminated', 'oddsRatio', 'compareOffer',
+        'roundedEv', 'totalOpened', 'bigSmallDiff',
+        'tenPercent', 'halvesCount'
+    ];
 
     let cases = [];        // { money, opened }
     let caseStatus = [];   // tracks which money values are eliminated
@@ -62,6 +68,7 @@
     let boxCountStreak = 0;        // streak for type 2 (boxes left) — skip after 3 correct
     let challengeRotation = 0;     // drives challenge frequency
     let challengeDeck = [];
+    let lastChallengeType = null;
     let lastOpenedValue = 0;       // value of last opened box (for challenge context)
     let prevTotal = 0;             // total before last box opened
     let pendingStatsUpdate = null; // deferred stats update { sum, count }
@@ -70,6 +77,7 @@
     const casesGridEl = document.getElementById('cases-grid');
     const statusEl = document.getElementById('status');
     const offerBoxEl = document.getElementById('offer-box');
+    const offerBackdropEl = document.getElementById('offer-backdrop');
     const offerAmountEl = document.getElementById('offer-amount');
     const dealBtnEl = document.getElementById('deal-btn');
     const nodealBtnEl = document.getElementById('nodeal-btn');
@@ -159,7 +167,7 @@
         casesOpenedThisRound = 0;
         offerList = [];
         stage = 'select';
-        offerBoxEl.classList.remove('visible');
+        offerBackdropEl.classList.remove('visible');
         statusEl.textContent =
             `Pick your candy box! Total candy pool ${formatCandies(TOTAL_SUM)} (EV ${formatCandies(Math.round(INITIAL_EV))}).`;
         statusEl.className = '';
@@ -237,13 +245,13 @@ function updateProbTrackerTitle() {
     function showLandingState() {
         stage = 'landing';
         rulesCardEl?.classList.remove('hidden');
-        offerBoxEl.classList.remove('visible');
+        offerBackdropEl.classList.remove('visible');
         offerMode = 'offer';
         swapTarget = -1;
         lastDecisionType = 'keep';
-        statusEl.textContent = 'Welcome to Candy Factory! Click New Game to shuffle the boxes.';
+        statusEl.textContent = '';
         statusEl.className = '';
-        roundInfoEl.textContent = 'Read the rules below, then tap New Game when ready.';
+        roundInfoEl.innerHTML = '<span style="font-size:1.4rem;">Read the rules below, then tap New Game when ready.</span>';
         prevOffersEl.innerHTML = '';
         currentRound = 0;
         casesToOpenThisRound = 0;
@@ -278,7 +286,14 @@ function updateProbTrackerTitle() {
         if (!challengeDeck.length) {
             refillChallengeDeck();
         }
-        return challengeDeck.shift();
+        // Avoid back-to-back same type
+        let type = challengeDeck.shift();
+        if (type === lastChallengeType && challengeDeck.length > 0) {
+            challengeDeck.push(type);
+            type = challengeDeck.shift();
+        }
+        lastChallengeType = type;
+        return type;
     }
 
     function renderCases() {
@@ -503,7 +518,7 @@ function autoOpenCase() {
         offerList.push(offer);
         updateOfferMarkers();
         offerAmountEl.textContent = formatCandies(offer);
-        offerBoxEl.classList.add('visible');
+        offerBackdropEl.classList.add('visible');
         offerTitleEl.textContent = "FACTORY MANAGER'S OFFER";
         statusEl.textContent = 'ACCEPT OR REJECT?';
         prevOffersEl.innerHTML = 'Previous offers: ' +
@@ -532,7 +547,7 @@ function autoOpenCase() {
         if (offerMode === 'offer') {
             lastDecisionType = 'reject';
             sndNoDeal();
-            offerBoxEl.classList.remove('visible');
+            offerBackdropEl.classList.remove('visible');
             currentRound++;
             casesToOpenThisRound = NCASE_TO_OPEN[currentRound - 1] || 0;
             casesOpenedThisRound = 0;
@@ -549,7 +564,7 @@ function autoOpenCase() {
     }
 
     function finishGame(isDeal, offer) {
-        offerBoxEl.classList.remove('visible');
+        offerBackdropEl.classList.remove('visible');
         stopPickTimer();
         stage = 'finished';
         offerMode = 'offer';
@@ -831,7 +846,7 @@ function appendProbHistory(entry) {
     }
 
     function formatCandies(val) {
-        return `${val.toLocaleString()} ${val === 1 ? 'candy' : 'candies'}`;
+        return `${val.toLocaleString()} \u{1F36C}`;
     }
 
     function getRemainingClosed() {
@@ -856,7 +871,7 @@ function appendProbHistory(entry) {
             finishGame(false, 0);
             return;
         }
-        offerBoxEl.classList.add('visible');
+        offerBackdropEl.classList.add('visible');
         offerTitleEl.textContent = 'SWAP BOXES?';
         offerAmountEl.textContent = `Swap for box #${swapTarget + 1}?`;
         prevOffersEl.innerHTML = '';
@@ -904,6 +919,8 @@ function appendProbHistory(entry) {
     let _mathKeyHandler = null;
     let _mathHintHandler = null;
 
+    let _mathPassHandler = null;
+
     function showMathChallenge(question, checkFn, onDone, hintText = null) {
         if (!mathChallengeEl) return;
         stopPickTimer(); // pause timer during challenge
@@ -914,6 +931,7 @@ function appendProbHistory(entry) {
         const fbEl = document.getElementById('math-feedback');
         const hBtn = mathHintBtn;
         const hintNoteEl = mathHintNoteEl;
+        const passBtn = document.getElementById('math-pass');
 
         qEl.innerHTML = question;
         aEl.value = '';
@@ -930,6 +948,10 @@ function appendProbHistory(entry) {
         if (hBtn && _mathHintHandler) {
             hBtn.removeEventListener('click', _mathHintHandler);
             _mathHintHandler = null;
+        }
+        if (passBtn && _mathPassHandler) {
+            passBtn.removeEventListener('click', _mathPassHandler);
+            _mathPassHandler = null;
         }
 
         let answered = false;
@@ -955,6 +977,39 @@ function appendProbHistory(entry) {
             hintNoteEl.textContent = '';
         }
 
+        // Pass button — skip without penalty
+        if (passBtn) {
+            passBtn.style.display = '';
+            _mathPassHandler = () => {
+                if (answered) return;
+                answered = true;
+                cleanup();
+                const result = checkFn('__PASS__');
+                fbEl.className = 'math-feedback';
+                fbEl.textContent = result.message || 'Skipped.';
+                setTimeout(() => {
+                    hideMathChallenge();
+                    if (onDone) onDone(false);
+                }, 1800);
+            };
+            passBtn.addEventListener('click', _mathPassHandler);
+        }
+
+        function cleanup() {
+            cBtn.removeEventListener('click', _mathCheckHandler);
+            aEl.removeEventListener('keydown', _mathKeyHandler);
+            if (hBtn && _mathHintHandler) {
+                hBtn.removeEventListener('click', _mathHintHandler);
+                _mathHintHandler = null;
+            }
+            if (passBtn && _mathPassHandler) {
+                passBtn.removeEventListener('click', _mathPassHandler);
+                _mathPassHandler = null;
+            }
+            _mathCheckHandler = null;
+            _mathKeyHandler = null;
+        }
+
         function doCheck() {
             if (answered) return;
             const userVal = aEl.value.trim();
@@ -973,15 +1028,7 @@ function appendProbHistory(entry) {
                 fbEl.textContent = result.message || 'Not quite.';
             }
             updateMathScoreDisplay();
-            // Clean up listeners
-            cBtn.removeEventListener('click', _mathCheckHandler);
-            aEl.removeEventListener('keydown', _mathKeyHandler);
-            if (hBtn && _mathHintHandler) {
-                hBtn.removeEventListener('click', _mathHintHandler);
-                _mathHintHandler = null;
-            }
-            _mathCheckHandler = null;
-            _mathKeyHandler = null;
+            cleanup();
             // Auto-dismiss after delay
             setTimeout(() => {
                 hideMathChallenge();
@@ -1054,8 +1101,8 @@ function showPostOpenChallenge(idx, remainingToOpen, autoOpened = false) {
 
         const rot = challengeRotation++;
 
-        // Skip every other box — no challenge, just flush stats and go
-        if (rot % 2 !== 0) {
+        // Show challenge every 4th box (at least 3 boxes apart)
+        if (rot % 4 !== 0) {
             flushPendingStats();
             continueAfterOpen(idx, autoOpened);
             return;
@@ -1088,14 +1135,293 @@ function showPostOpenChallenge(idx, remainingToOpen, autoOpened = false) {
         const type = types[index];
         const next = () => runChallengeSequence(types, index + 1, onAllDone);
 
-        switch (type) {
-            case 'total': showTotalChallenge(next); break;
-            case 'boxCount': showBoxCountChallenge(next); break;
-            case 'ev': showEVChallenge(next); break;
-            case 'probability': showProbabilityChallenge(next); break;
-            default: next(); break;
-        }
+        const challengeFn = CHALLENGE_FNS[type];
+        if (challengeFn) { challengeFn(next); } else { next(); }
     }
+
+    function getUnopenedValues() {
+        return cases.filter(c => !c.opened).map(c => c.money);
+    }
+    function getOpenedValues() {
+        return cases.filter(c => c.opened).map(c => c.money);
+    }
+
+    // --- Challenge: Range (max - min of remaining) ---
+    function showRangeChallenge(onDone) {
+        const vals = getUnopenedValues();
+        const mx = Math.max(...vals), mn = Math.min(...vals);
+        const ans = mx - mn;
+        const q = `The highest remaining candy value is <strong>${mx.toLocaleString()}</strong>.<br>` +
+            `The lowest is <strong>${mn.toLocaleString()}</strong>.<br><br>What's the range (highest minus lowest)?`;
+        showMathChallenge(q, (a) => {
+            if (a === '__PASS__') return { correct: false, message: `The range is ${ans.toLocaleString()}. (${mx.toLocaleString()} - ${mn.toLocaleString()})` };
+            return parseNumber(a) === ans
+                ? { correct: true, message: `Correct! The range is ${ans.toLocaleString()}.` }
+                : { correct: false, message: `The range is ${ans.toLocaleString()}. (${mx.toLocaleString()} - ${mn.toLocaleString()})` };
+        }, () => onDone(), 'Subtract the smallest remaining value from the largest.');
+    }
+
+    // --- Challenge: Count low boxes (≤ 1000) ---
+    function showLowCountChallenge(onDone) {
+        const vals = getUnopenedValues();
+        const low = vals.filter(v => v <= 1000).length;
+        const count = vals.length;
+        const q = `Out of <strong>${count}</strong> unopened boxes, how many have <strong>1,000 or fewer</strong> candies?`;
+        showMathChallenge(q, (a) => {
+            if (a === '__PASS__') return { correct: false, message: `There are ${low} small boxes (≤ 1,000).` };
+            return parseNumber(a) === low
+                ? { correct: true, message: `Correct! ${low} boxes have 1,000 or fewer candies.` }
+                : { correct: false, message: `There are ${low} small boxes (≤ 1,000).` };
+        }, () => onDone(), 'Count the boxes on the board with values of 1,000 or less.');
+    }
+
+    // --- Challenge: Fraction simplification ---
+    function showFractionChallenge(onDone) {
+        const count = countUnopenedBoxes();
+        const high = countHighUnopened();
+        function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
+        const g = gcd(high, count);
+        const numSimp = high / g, denSimp = count / g;
+        const q = `<strong>${high}</strong> out of <strong>${count}</strong> boxes are BIG (> 1,000 candies).<br><br>` +
+            `Simplify the fraction ${high}/${count}.<br><small>Write as a/b (e.g. 3/5)</small>`;
+        showMathChallenge(q, (a) => {
+            if (a === '__PASS__') return { correct: false, message: `Simplified: ${numSimp}/${denSimp}` };
+            const parts = a.replace(/\s/g, '').split('/');
+            if (parts.length === 2 && parseInt(parts[0]) === numSimp && parseInt(parts[1]) === denSimp) {
+                return { correct: true, message: `Correct! ${numSimp}/${denSimp}` };
+            }
+            return { correct: false, message: `Simplified: ${numSimp}/${denSimp}` };
+        }, () => onDone(), 'Find the biggest number that divides both top and bottom evenly.');
+    }
+
+    // --- Challenge: Double a value ---
+    function showDoubleChallenge(onDone) {
+        const val = lastOpenedValue;
+        const ans = val * 2;
+        const q = `The last box had <strong>${val.toLocaleString()}</strong> candies.<br><br>` +
+            `What's <strong>double</strong> that amount?`;
+        showMathChallenge(q, (a) => {
+            if (a === '__PASS__') return { correct: false, message: `Double ${val.toLocaleString()} = ${ans.toLocaleString()}` };
+            return parseNumber(a) === ans
+                ? { correct: true, message: `Correct! ${ans.toLocaleString()} candies.` }
+                : { correct: false, message: `Double ${val.toLocaleString()} = ${ans.toLocaleString()}` };
+        }, () => onDone(), 'Multiply the value by 2.');
+    }
+
+    // --- Challenge: Half of EV ---
+    function showHalfEvChallenge(onDone) {
+        const sum = getUnopenedSum();
+        const count = countUnopenedBoxes();
+        const ev = count > 0 ? sum / count : 0;
+        const half = Math.round(ev / 2);
+        const tol = Math.max(250, Math.round(half * 0.05));
+        const q = `The current EV (average) is about <strong>${Math.round(ev).toLocaleString()}</strong> candies.<br><br>` +
+            `What's <strong>half</strong> of the EV?<br><small>A close estimate is fine.</small>`;
+        showMathChallenge(q, (a) => {
+            if (a === '__PASS__') return { correct: false, message: `Half the EV is about ${half.toLocaleString()}.` };
+            return Math.abs(parseNumber(a) - half) <= tol
+                ? { correct: true, message: `Correct! About ${half.toLocaleString()} candies.` }
+                : { correct: false, message: `Half the EV is about ${half.toLocaleString()}.` };
+        }, () => onDone(), 'Divide the EV by 2.');
+    }
+
+    // --- Challenge: What's the highest value left? ---
+    function showMaxLeftChallenge(onDone) {
+        const vals = getUnopenedValues();
+        const mx = Math.max(...vals);
+        const q = `Look at the money boards.<br><br>What's the <strong>highest</strong> candy value still in play?`;
+        showMathChallenge(q, (a) => {
+            if (a === '__PASS__') return { correct: false, message: `The highest is ${mx.toLocaleString()}.` };
+            return parseNumber(a) === mx
+                ? { correct: true, message: `Correct! ${mx.toLocaleString()} is the biggest prize still in play.` }
+                : { correct: false, message: `The highest is ${mx.toLocaleString()}.` };
+        }, () => onDone(), 'Check the money boards for the largest value not crossed out.');
+    }
+
+    // --- Challenge: What's the lowest value left? ---
+    function showMinLeftChallenge(onDone) {
+        const vals = getUnopenedValues();
+        const mn = Math.min(...vals);
+        const q = `Look at the money boards.<br><br>What's the <strong>lowest</strong> candy value still in play?`;
+        showMathChallenge(q, (a) => {
+            if (a === '__PASS__') return { correct: false, message: `The lowest is ${mn.toLocaleString()}.` };
+            return parseNumber(a) === mn
+                ? { correct: true, message: `Correct! ${mn.toLocaleString()} is the smallest still in play.` }
+                : { correct: false, message: `The lowest is ${mn.toLocaleString()}.` };
+        }, () => onDone(), 'Check the money boards for the smallest value not crossed out.');
+    }
+
+    // --- Challenge: Add two opened values ---
+    function showSumTwoChallenge(onDone) {
+        const opened = getOpenedValues();
+        if (opened.length < 2) { onDone(); return; }
+        const i1 = Math.floor(Math.random() * opened.length);
+        let i2 = Math.floor(Math.random() * opened.length);
+        while (i2 === i1 && opened.length > 1) i2 = Math.floor(Math.random() * opened.length);
+        const v1 = opened[i1], v2 = opened[i2];
+        const ans = v1 + v2;
+        const q = `Two boxes you've opened had <strong>${v1.toLocaleString()}</strong> and <strong>${v2.toLocaleString()}</strong> candies.<br><br>` +
+            `What's their sum?`;
+        showMathChallenge(q, (a) => {
+            if (a === '__PASS__') return { correct: false, message: `${v1.toLocaleString()} + ${v2.toLocaleString()} = ${ans.toLocaleString()}` };
+            return parseNumber(a) === ans
+                ? { correct: true, message: `Correct! ${ans.toLocaleString()} candies total.` }
+                : { correct: false, message: `${v1.toLocaleString()} + ${v2.toLocaleString()} = ${ans.toLocaleString()}` };
+        }, () => onDone(), 'Add the two values together.');
+    }
+
+    // --- Challenge: Percentage of boxes eliminated ---
+    function showPctEliminatedChallenge(onDone) {
+        const opened = cases.filter(c => c.opened).length;
+        const pct = Math.round((opened / NUM_CASES) * 100);
+        const q = `You've opened <strong>${opened}</strong> out of <strong>${NUM_CASES}</strong> total boxes.<br><br>` +
+            `What percentage of boxes have been eliminated?`;
+        showMathChallenge(q, (a) => {
+            if (a === '__PASS__') return { correct: false, message: `${pct}% eliminated. (${opened}/${NUM_CASES} × 100)` };
+            const num = parseFloat(a.replace(/[%,]/g, ''));
+            return (!isNaN(num) && Math.abs(num - pct) <= 2)
+                ? { correct: true, message: `Correct! ${pct}% of boxes eliminated.` }
+                : { correct: false, message: `${pct}% eliminated. (${opened}/${NUM_CASES} × 100)` };
+        }, () => onDone(), 'Divide opened boxes by total boxes, then multiply by 100.');
+    }
+
+    // --- Challenge: Odds ratio (big : small) ---
+    function showOddsRatioChallenge(onDone) {
+        const vals = getUnopenedValues();
+        const big = vals.filter(v => v > 1000).length;
+        const small = vals.filter(v => v <= 1000).length;
+        if (small === 0 || big === 0) { onDone(); return; }
+        const q = `There are <strong>${big}</strong> BIG boxes and <strong>${small}</strong> small boxes remaining.<br><br>` +
+            `What are the odds of picking a BIG box?<br><small>Write as big:small (e.g. 3:2)</small>`;
+        showMathChallenge(q, (a) => {
+            if (a === '__PASS__') return { correct: false, message: `Odds are ${big}:${small} in favor of BIG.` };
+            const parts = a.replace(/\s/g, '').split(':');
+            if (parts.length === 2) {
+                const r1 = parseInt(parts[0]), r2 = parseInt(parts[1]);
+                if (r1 * small === r2 * big) return { correct: true, message: `Correct! ${big}:${small} odds for BIG.` };
+            }
+            return { correct: false, message: `Odds are ${big}:${small} in favor of BIG.` };
+        }, () => onDone(), 'Write the number of BIG boxes, then a colon, then the number of small boxes.');
+    }
+
+    // --- Challenge: Is the last offer above or below EV? ---
+    function showCompareOfferChallenge(onDone) {
+        if (offerList.length === 0) { onDone(); return; }
+        const lastOffer = offerList[offerList.length - 1];
+        const ev = Math.round(avgUnopened);
+        const relation = lastOffer > ev ? 'above' : lastOffer < ev ? 'below' : 'equal to';
+        const q = `The last offer was <strong>${lastOffer.toLocaleString()}</strong> candies.<br>` +
+            `The current EV is about <strong>${ev.toLocaleString()}</strong>.<br><br>` +
+            `Was the offer <strong>above</strong> or <strong>below</strong> the EV?`;
+        showMathChallenge(q, (a) => {
+            if (a === '__PASS__') return { correct: false, message: `The offer was ${relation} the EV.` };
+            const lower = a.toLowerCase().trim();
+            if (lower === relation || (relation === 'equal to' && (lower === 'equal' || lower === 'same'))) {
+                return { correct: true, message: `Correct! The offer was ${relation} the EV.` };
+            }
+            return { correct: false, message: `The offer was ${relation} the EV.` };
+        }, () => onDone(), 'Compare the offer number to the EV number. Which is bigger?');
+    }
+
+    // --- Challenge: Round EV to nearest thousand ---
+    function showRoundedEvChallenge(onDone) {
+        const sum = getUnopenedSum();
+        const count = countUnopenedBoxes();
+        const ev = count > 0 ? sum / count : 0;
+        const rounded = Math.round(ev / 1000) * 1000;
+        const q = `The exact EV is about <strong>${Math.round(ev).toLocaleString()}</strong> candies.<br><br>` +
+            `Round this to the nearest <strong>thousand</strong>.`;
+        showMathChallenge(q, (a) => {
+            if (a === '__PASS__') return { correct: false, message: `Rounded to nearest thousand: ${rounded.toLocaleString()}` };
+            return parseNumber(a) === rounded
+                ? { correct: true, message: `Correct! ${rounded.toLocaleString()} candies.` }
+                : { correct: false, message: `Rounded to nearest thousand: ${rounded.toLocaleString()}` };
+        }, () => onDone(), 'Look at the hundreds digit. 500+ rounds up, below 500 rounds down.');
+    }
+
+    // --- Challenge: How many total candies have been eliminated? ---
+    function showTotalOpenedChallenge(onDone) {
+        const openedSum = getOpenedValues().reduce((s, v) => s + v, 0);
+        const q = `Think about all the boxes you've opened so far.<br><br>` +
+            `What's the <strong>total</strong> of all eliminated candy values?<br><small>Hint: Total start was ${TOTAL_SUM.toLocaleString()}. Current remaining is ${getUnopenedSum().toLocaleString()}.</small>`;
+        showMathChallenge(q, (a) => {
+            if (a === '__PASS__') return { correct: false, message: `Total eliminated: ${openedSum.toLocaleString()}. (${TOTAL_SUM.toLocaleString()} - ${getUnopenedSum().toLocaleString()})` };
+            return parseNumber(a) === openedSum
+                ? { correct: true, message: `Correct! ${openedSum.toLocaleString()} candies eliminated.` }
+                : { correct: false, message: `Total eliminated: ${openedSum.toLocaleString()}. (${TOTAL_SUM.toLocaleString()} - ${getUnopenedSum().toLocaleString()})` };
+        }, () => onDone(), 'Subtract the current remaining total from the starting total.');
+    }
+
+    // --- Challenge: Difference between big and small box counts ---
+    function showBigSmallDiffChallenge(onDone) {
+        const vals = getUnopenedValues();
+        const big = vals.filter(v => v > 1000).length;
+        const small = vals.filter(v => v <= 1000).length;
+        const diff = Math.abs(big - small);
+        const more = big > small ? 'BIG' : big < small ? 'small' : 'equal';
+        const q = `There are <strong>${big}</strong> BIG boxes (> 1,000) and <strong>${small}</strong> small boxes (≤ 1,000).<br><br>` +
+            `How many <strong>more</strong> ${more === 'equal' ? 'of one type' : more + ' boxes'} are there?`;
+        showMathChallenge(q, (a) => {
+            if (a === '__PASS__') return { correct: false, message: `Difference: ${diff}. (${big} BIG vs ${small} small)` };
+            return parseNumber(a) === diff
+                ? { correct: true, message: `Correct! ${diff} more ${more} boxes.` }
+                : { correct: false, message: `Difference: ${diff}. (${Math.max(big, small)} - ${Math.min(big, small)})` };
+        }, () => onDone(), 'Subtract the smaller count from the larger count.');
+    }
+
+    // --- Challenge: 10% of remaining total ---
+    function showTenPercentChallenge(onDone) {
+        const sum = getUnopenedSum();
+        const ans = Math.round(sum / 10);
+        const q = `The total remaining candies is <strong>${sum.toLocaleString()}</strong>.<br><br>` +
+            `What's <strong>10%</strong> of that total?`;
+        showMathChallenge(q, (a) => {
+            if (a === '__PASS__') return { correct: false, message: `10% of ${sum.toLocaleString()} = ${ans.toLocaleString()}` };
+            return Math.abs(parseNumber(a) - ans) <= 1
+                ? { correct: true, message: `Correct! ${ans.toLocaleString()} candies.` }
+                : { correct: false, message: `10% of ${sum.toLocaleString()} = ${ans.toLocaleString()}` };
+        }, () => onDone(), 'Move the decimal point one place to the left (divide by 10).');
+    }
+
+    // --- Challenge: How many boxes in each half (above/below median)? ---
+    function showHalvesCountChallenge(onDone) {
+        const vals = getUnopenedValues().sort((a, b) => a - b);
+        const mid = vals[Math.floor(vals.length / 2)];
+        const below = vals.filter(v => v < mid).length;
+        const above = vals.filter(v => v > mid).length;
+        const q = `There are <strong>${vals.length}</strong> unopened boxes.<br>` +
+            `The middle value (median) is about <strong>${mid.toLocaleString()}</strong>.<br><br>` +
+            `How many boxes are worth <strong>more</strong> than ${mid.toLocaleString()}?`;
+        showMathChallenge(q, (a) => {
+            if (a === '__PASS__') return { correct: false, message: `${above} boxes are above the median.` };
+            return parseNumber(a) === above
+                ? { correct: true, message: `Correct! ${above} boxes above the median.` }
+                : { correct: false, message: `${above} boxes are above the median.` };
+        }, () => onDone(), 'Count values strictly greater than the median.');
+    }
+
+    const CHALLENGE_FNS = {
+        total: showTotalChallenge,
+        boxCount: showBoxCountChallenge,
+        ev: showEVChallenge,
+        probability: showProbabilityChallenge,
+        range: showRangeChallenge,
+        lowCount: showLowCountChallenge,
+        fraction: showFractionChallenge,
+        double: showDoubleChallenge,
+        halfEv: showHalfEvChallenge,
+        maxLeft: showMaxLeftChallenge,
+        minLeft: showMinLeftChallenge,
+        sumTwo: showSumTwoChallenge,
+        pctEliminated: showPctEliminatedChallenge,
+        oddsRatio: showOddsRatioChallenge,
+        compareOffer: showCompareOfferChallenge,
+        roundedEv: showRoundedEvChallenge,
+        totalOpened: showTotalOpenedChallenge,
+        bigSmallDiff: showBigSmallDiffChallenge,
+        tenPercent: showTenPercentChallenge,
+        halvesCount: showHalvesCountChallenge
+    };
 
     // --- Challenge Type 1: New Total ---
     function showTotalChallenge(onDone) {
@@ -1105,11 +1431,12 @@ function showPostOpenChallenge(idx, remainingToOpen, autoOpened = false) {
             `What's the new total of remaining candies?`;
 
         showMathChallenge(q, (answer) => {
+            if (answer === '__PASS__') return { correct: false, message: `The answer is ${currentTotal.toLocaleString()}. (${prevTotal.toLocaleString()} - ${lastOpenedValue.toLocaleString()})` };
             const num = parseNumber(answer);
             if (num === currentTotal) {
                 return { correct: true, message: `Correct! ${currentTotal.toLocaleString()} candies remain.` };
             }
-            return { correct: false, message: `The answer is ${currentTotal.toLocaleString()}. (${prevTotal.toLocaleString()} - ${lastOpenedValue.toLocaleString()} = ${currentTotal.toLocaleString()})` };
+            return { correct: false, message: `The answer is ${currentTotal.toLocaleString()}. (${prevTotal.toLocaleString()} - ${lastOpenedValue.toLocaleString()})` };
         }, (correct) => { onDone(); }, 'Subtract the opened box value from the previous total.');
     }
 
@@ -1121,14 +1448,15 @@ function showPostOpenChallenge(idx, remainingToOpen, autoOpened = false) {
             `How many unopened boxes remain (including yours)?`;
 
         showMathChallenge(q, (answer) => {
+            if (answer === '__PASS__') { boxCountStreak = 0; return { correct: false, message: `The answer is ${correct}. (${NUM_CASES} - ${totalOpened} = ${correct})` }; }
             const num = parseNumber(answer);
             if (num === correct) {
                 boxCountStreak++;
                 return { correct: true, message: `Correct! ${correct} boxes remain.` };
             }
             boxCountStreak = 0;
-            return { correct: false, message: `The answer is ${correct}. (${NUM_CASES} total - ${totalOpened} opened = ${correct})` };
-        }, (wasCorrect) => { onDone(); }, 'Start with 30 boxes and subtract the ones you have opened.');
+            return { correct: false, message: `The answer is ${correct}. (${NUM_CASES} - ${totalOpened} = ${correct})` };
+        }, (wasCorrect) => { onDone(); }, 'Start with 25 boxes and subtract the ones you have opened.');
     }
 
     // --- Challenge Type 3: EV ---
@@ -1137,17 +1465,20 @@ function showPostOpenChallenge(idx, remainingToOpen, autoOpened = false) {
         const count = countUnopenedBoxes();
         const ev = count > 0 ? sum / count : 0;
         const evRounded = Math.round(ev);
+        // Allow approximate answers — within 5% or 500, whichever is larger
+        const tolerance = Math.max(500, Math.round(evRounded * 0.05));
         const q = `Total remaining candies: <strong>${sum.toLocaleString()}</strong><br>` +
             `Unopened boxes: <strong>${count}</strong><br><br>` +
-            `What's the average (mean) candy value per box?<br><small>This is also called the EV (Expected Value). Round to the nearest whole number.</small>`;
+            `What's the approximate average (mean) candy value per box?<br><small>This is the EV (Expected Value). A close estimate is fine!</small>`;
 
         showMathChallenge(q, (answer) => {
+            if (answer === '__PASS__') return { correct: false, message: `The average (EV) is ${evRounded.toLocaleString()}. (${sum.toLocaleString()} ÷ ${count})` };
             const num = parseNumber(answer);
-            if (Math.abs(num - evRounded) <= 1) {
-                return { correct: true, message: `Correct! EV is ${evRounded.toLocaleString()} candies.` };
+            if (Math.abs(num - evRounded) <= tolerance) {
+                return { correct: true, message: `Correct! EV is about ${evRounded.toLocaleString()} candies.` };
             }
-            return { correct: false, message: `The average (EV) is ${evRounded.toLocaleString()}. (${sum.toLocaleString()} ÷ ${count} = ${evRounded.toLocaleString()})` };
-        }, () => { onDone(); }, 'Divide the remaining total candies by the number of unopened boxes (sum ÷ count).');
+            return { correct: false, message: `The average (EV) is ${evRounded.toLocaleString()}. (${sum.toLocaleString()} ÷ ${count})` };
+        }, () => { onDone(); }, 'Divide the remaining total candies by the number of unopened boxes. A close estimate counts!');
     }
 
     // --- Challenge Type 4: Probability ---
@@ -1161,11 +1492,12 @@ function showPostOpenChallenge(idx, remainingToOpen, autoOpened = false) {
             `What percentage chance is your box BIG?<br><small>Round to one decimal place.</small>`;
 
         showMathChallenge(q, (answer) => {
+            if (answer === '__PASS__') return { correct: false, message: `The answer is ${pctRounded}%. (${high}/${count} × 100)` };
             const num = parseFloat(answer.replace(/[%,]/g, ''));
-            if (!isNaN(num) && Math.abs(num - pctRounded) <= 1) {
+            if (!isNaN(num) && Math.abs(num - pctRounded) <= 2) {
                 return { correct: true, message: `Correct! ${pctRounded}% chance of a BIG box.` };
             }
-            return { correct: false, message: `The answer is ${pctRounded}%. (${high}/${count} × 100 = ${pctRounded}%)` };
+            return { correct: false, message: `The answer is ${pctRounded}%. (${high}/${count} × 100)` };
         }, () => { onDone(); }, 'Take big boxes left ÷ total boxes left, then multiply by 100.');
     }
 
@@ -1187,11 +1519,12 @@ function showPostOpenChallenge(idx, remainingToOpen, autoOpened = false) {
             `What's the <strong>lowest</strong> possible offer?<br><small>Round to the nearest candy.</small>`;
 
         showMathChallenge(q, (answer) => {
+            if (answer === '__PASS__') return { correct: false, message: `The lowest offer is ${loOffer.toLocaleString()}. (${Math.round(lo * 100)}% of ${ev.toLocaleString()})` };
             const num = parseNumber(answer);
             if (Math.abs(num - loOffer) <= 100) {
                 return { correct: true, message: `Correct! Lowest offer: ${loOffer.toLocaleString()} candies. (Highest: ${hiOffer.toLocaleString()})` };
             }
-            return { correct: false, message: `The lowest offer is ${loOffer.toLocaleString()} candies. (${Math.round(lo * 100)}% of ${ev.toLocaleString()} = ${loOffer.toLocaleString()})` };
+            return { correct: false, message: `The lowest offer is ${loOffer.toLocaleString()}. (${Math.round(lo * 100)}% of ${ev.toLocaleString()})` };
         }, () => {
             showOffer();
         }, 'Multiply the lower percentage for this round by the EV to get the lowest offer.');
@@ -1221,6 +1554,7 @@ function showPostOpenChallenge(idx, remainingToOpen, autoOpened = false) {
             `What's the median value?`;
 
         showMathChallenge(q, (answer) => {
+            if (answer === '__PASS__') return { correct: false, message: `The median is ${median.toLocaleString()}.` };
             const num = parseNumber(answer);
             if (Math.abs(num - median) <= 1) {
                 return { correct: true, message: `Correct! The median is ${median.toLocaleString()} candies.` };
@@ -1248,7 +1582,7 @@ function showPostOpenChallenge(idx, remainingToOpen, autoOpened = false) {
 
     function parseNumber(str) {
         // Strip commas, "candies", whitespace, % signs
-        const cleaned = str.replace(/,/g, '').replace(/candies/gi, '').replace(/%/g, '').trim();
+        const cleaned = str.replace(/,/g, '').replace(/candies/gi, '').replace(/\u{1F36C}/gu, '').replace(/%/g, '').trim();
         const num = parseFloat(cleaned);
         return isNaN(num) ? -Infinity : Math.round(num);
     }
@@ -1265,7 +1599,10 @@ function showPostOpenChallenge(idx, remainingToOpen, autoOpened = false) {
     let audioCtx = null;
 
     function ensureAudioCtx() {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (!audioCtx) {
+            audioCtx = window._audioBlessed || new (window.AudioContext || window.webkitAudioContext)();
+            window.audioCtx = audioCtx;
+        }
         if (audioCtx.state === 'suspended') audioCtx.resume();
     }
 

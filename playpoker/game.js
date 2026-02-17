@@ -45,7 +45,9 @@ let hasStartedHand = false;
     const potBreakdownEl = document.getElementById('pot-breakdown');
     const tieBreakEl = document.getElementById('tie-break-info');
     const dealBtn = document.getElementById('deal-btn');
-    const actionsEl = document.getElementById('actions');
+    const actionsLeftEl = document.getElementById('actions-left');
+    const actionsRightEl = document.getElementById('actions-right');
+    const potActionsRow = document.querySelector('.pot-actions-row');
     const foldBtn = document.getElementById('fold-btn');
     const checkBtn = document.getElementById('check-btn');
     const callBtn = document.getElementById('call-btn');
@@ -113,8 +115,16 @@ let hasStartedHand = false;
         }
     }
 
+    const myHandBtn = document.getElementById('my-hand-btn');
+
     function updateLandingState() {
-        tableEl.classList.toggle('landing', !hasStartedHand);
+        const isLanding = !hasStartedHand;
+        tableEl.classList.toggle('landing', isLanding);
+        myHandBtn.style.display = isLanding ? 'none' : '';
+        rankingsBtn.style.display = isLanding ? 'none' : '';
+        actionsLeftEl.style.display = isLanding ? 'none' : '';
+        actionsRightEl.style.display = isLanding ? 'none' : '';
+        dealBtn.textContent = isLanding ? 'Play' : 'Deal';
     }
 
     // --- Initialization ---
@@ -719,8 +729,9 @@ let hasStartedHand = false;
         const p = players[0];
         const toCall = currentBet - p.currentBet;
 
-        actionsEl.style.display = 'flex';
-        actionsEl.classList.remove('waiting');
+        actionsLeftEl.style.display = '';
+        actionsRightEl.style.display = '';
+        potActionsRow.classList.remove('waiting');
 
         const canFold = handInProgress && !p.folded && !p.busted && !p.allIn;
         const canCheck = handInProgress && toCall === 0 && !p.allIn && !p.folded;
@@ -753,8 +764,9 @@ let hasStartedHand = false;
     }
 
     function hideActions() {
-        actionsEl.style.display = 'flex';
-        actionsEl.classList.add('waiting');
+        actionsLeftEl.style.display = '';
+        actionsRightEl.style.display = '';
+        potActionsRow.classList.add('waiting');
         if (foldBtn) foldBtn.disabled = true;
         if (checkBtn) checkBtn.disabled = true;
         if (callBtn) callBtn.disabled = true;
@@ -1121,7 +1133,7 @@ let hasStartedHand = false;
         if (!hasStartedHand) {
             const hero = document.createElement('div');
             hero.className = 'community-hero';
-            hero.innerHTML = '<div class="hero-icon">♠️ ♥️ ♣️ ♦️</div><p>Press Deal to shuffle &amp; start a hand.</p>';
+            hero.innerHTML = '<div class="hero-icon">♠️ ♥️ ♣️ ♦️</div><p>Press Play to shuffle &amp; start a hand.</p>';
             communityCardsEl.appendChild(hero);
             return;
         }
@@ -1276,10 +1288,12 @@ let hasStartedHand = false;
                 ? 'Won'
                 : (p.folded ? 'Folded' : 'Lost')
         }));
+        const diffLabel = {easy: 'E', medium: 'M', hard: 'H'}[difficultySelect.value] || 'M';
         handHistory.unshift({
             hand: handCounter,
             desc,
-            players: snapshot
+            players: snapshot,
+            difficulty: diffLabel
         });
         if (handHistory.length > 10) handHistory.pop();
         savePokerStats(lastHandWinners.includes(0));
@@ -1299,7 +1313,7 @@ let hasStartedHand = false;
             div.className = 'hand-history-entry';
             const header = document.createElement('div');
             header.className = 'hand-header';
-            header.textContent = `Hand ${entry.hand}`;
+            header.textContent = `Hand ${entry.hand} [${entry.difficulty || 'M'}]`;
             const desc = document.createElement('div');
             desc.className = 'hand-desc';
             desc.textContent = entry.desc;
@@ -1391,7 +1405,6 @@ let hasStartedHand = false;
     }
 
     // --- My Hand evaluation ---
-    const myHandBtn = document.getElementById('my-hand-btn');
     const handTooltip = document.getElementById('hand-tooltip');
     let handTooltipBody = null;
     let tooltipTimeout = null;
@@ -1536,7 +1549,10 @@ let hasStartedHand = false;
     // --- Sound effects (Web Audio API) ---
     let audioCtx = null;
     function ensureAudio() {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (!audioCtx) {
+            audioCtx = window._audioBlessed || new (window.AudioContext || window.webkitAudioContext)();
+            window.audioCtx = audioCtx;
+        }
         if (audioCtx.state === 'suspended') audioCtx.resume();
     }
 
