@@ -9,8 +9,9 @@
 /* Begin PBXBuildFile section */
 		A10000010000000000000001 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000001 /* AppDelegate.swift */; };
 		A10000010000000000000004 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000004 /* Assets.xcassets */; };
-		A10000010000000000000007 /* GamesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000007 /* GamesViewController.swift */; };
+		A10000010000000000000007 /* GameWebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000007 /* GameWebViewController.swift */; };
 		A10000010000000000000008 /* AboutViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000008 /* AboutViewController.swift */; };
+		A10000010000000000000010 /* GamePickerViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000011 /* GamePickerViewController.swift */; };
 		A10000010000000000000009 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A20000010000000000000009 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
@@ -18,8 +19,9 @@
 		A20000010000000000000001 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		A20000010000000000000004 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A20000010000000000000006 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		A20000010000000000000007 /* GamesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GamesViewController.swift; sourceTree = "<group>"; };
+		A20000010000000000000007 /* GameWebViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameWebViewController.swift; sourceTree = "<group>"; };
 		A20000010000000000000008 /* AboutViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutViewController.swift; sourceTree = "<group>"; };
+		A20000010000000000000011 /* GamePickerViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GamePickerViewController.swift; sourceTree = "<group>"; };
 		A20000010000000000000009 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		A20000010000000000000010 /* GamesApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GamesApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -49,7 +51,8 @@
 			isa = PBXGroup;
 			children = (
 				A20000010000000000000001 /* AppDelegate.swift */,
-				A20000010000000000000007 /* GamesViewController.swift */,
+				A20000010000000000000011 /* GamePickerViewController.swift */,
+				A20000010000000000000007 /* GameWebViewController.swift */,
 				A20000010000000000000008 /* AboutViewController.swift */,
 			);
 			path = Sources;
@@ -166,7 +169,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000010000000000000001 /* AppDelegate.swift in Sources */,
-				A10000010000000000000007 /* GamesViewController.swift in Sources */,
+				A10000010000000000000010 /* GamePickerViewController.swift in Sources */,
+				A10000010000000000000007 /* GameWebViewController.swift in Sources */,
 				A10000010000000000000008 /* AboutViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -1,11 +1,16 @@
 import UIKit
 import WebKit
 
-class GamesViewController: UIViewController, WKNavigationDelegate, WKScriptMessageHandler {
+class GameWebViewController: UIViewController, WKNavigationDelegate, WKScriptMessageHandler {
+    var gamePath: String = ""
+    var gameTitle: String = ""
+
     private var webView: WKWebView!
+    private var spinner: UIActivityIndicatorView!
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        title = gameTitle
         view.backgroundColor = UIColor(red: 15/255, green: 15/255, blue: 35/255, alpha: 1)
 
         let config = WKWebViewConfiguration()
@@ -13,8 +18,8 @@ class GamesViewController: UIViewController, WKNavigationDelegate, WKScriptMessa
         config.userContentController.add(self, name: "haptic")
         config.userContentController.add(self, name: "nativeShare")
         config.userContentController.add(self, name: "jsLog")
+        config.userContentController.add(self, name: "goBack")
 
-        // Inject JS bridge for haptic feedback, native share, and error logging
         let bridgeJS = """
         window.nativeBridge = {
             haptic: function(style) {
@@ -24,7 +29,6 @@ class GamesViewController: UIViewController, WKNavigationDelegate, WKScriptMessa
                 window.webkit.messageHandlers.nativeShare.postMessage(text || document.title);
             }
         };
-        // Forward JS errors to native console
         window.onerror = function(msg, source, line, col, error) {
             var info = msg + ' at ' + (source || '?') + ':' + line + ':' + col;
             if (error && error.stack) { info += '\\n' + error.stack; }
@@ -35,7 +39,6 @@ class GamesViewController: UIViewController, WKNavigationDelegate, WKScriptMessa
             var reason = e.reason ? (e.reason.stack || String(e.reason)) : 'unknown';
             window.webkit.messageHandlers.jsLog.postMessage('PROMISE REJECT: ' + reason);
         });
-        // Also capture console.error and console.warn
         var origError = console.error;
         var origWarn = console.warn;
         console.error = function() {
@@ -48,7 +51,6 @@ class GamesViewController: UIViewController, WKNavigationDelegate, WKScriptMessa
             window.webkit.messageHandlers.jsLog.postMessage('console.warn: ' + args);
             origWarn.apply(console, arguments);
         };
-        // Auto-add haptic to all game card taps
         document.addEventListener('click', function(e) {
             var card = e.target.closest('.game-card');
             if (card) { window.nativeBridge.haptic('medium'); }
@@ -56,14 +58,37 @@ class GamesViewController: UIViewController, WKNavigationDelegate, WKScriptMessa
             if (btn && !card) { window.nativeBridge.haptic('light'); }
         });
         """
-        let script = WKUserScript(source: bridgeJS, injectionTime: .atDocumentEnd, forMainFrameOnly: false)
-        config.userContentController.addUserScript(script)
+        let bridgeScript = WKUserScript(source: bridgeJS, injectionTime: .atDocumentEnd, forMainFrameOnly: false)
+        config.userContentController.addUserScript(bridgeScript)
+
+        let polishCSS = """
+        (function() {
+            var style = document.createElement('style');
+            style.textContent = '\\
+                a.back { display: none !important; } \\
+                * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; } \\
+                input, textarea, select { -webkit-user-select: auto; user-select: auto; }\\
+            ';
+            document.head.appendChild(style);
+
+            document.addEventListener('click', function(e) {
+                var link = e.target.closest('a.back');
+                if (link) {
+                    e.preventDefault();
+                    window.webkit.messageHandlers.goBack.postMessage('');
+                }
+            });
+        })();
+        """
+        let polishScript = WKUserScript(source: polishCSS, injectionTime: .atDocumentEnd, forMainFrameOnly: false)
+        config.userContentController.addUserScript(polishScript)
 
         webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = self
         webView.isOpaque = false
         webView.backgroundColor = view.backgroundColor
         webView.scrollView.backgroundColor = view.backgroundColor
+        webView.scrollView.bounces = false
         webView.translatesAutoresizingMaskIntoConstraints = false
 
         view.addSubview(webView)
@@ -71,18 +96,31 @@ class GamesViewController: UIViewController, WKNavigationDelegate, WKScriptMessa
             webView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             webView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
             webView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            webView.trailingAnchor.constraint(equalTo: view.trailingAnchor)
+            webView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+        ])
+
+        spinner = UIActivityIndicatorView(style: .large)
+        spinner.color = .white
+        spinner.translatesAutoresizingMaskIntoConstraints = false
+        spinner.hidesWhenStopped = true
+        view.addSubview(spinner)
+        NSLayoutConstraint.activate([
+            spinner.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            spinner.centerYAnchor.constraint(equalTo: view.centerYAnchor),
         ])
 
         loadGame()
     }
 
     private func loadGame() {
-        guard let webRoot = Bundle.main.url(forResource: "Web", withExtension: nil),
-              let indexURL = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "Web") else {
+        guard !gamePath.isEmpty,
+              let webRoot = Bundle.main.url(forResource: "Web", withExtension: nil),
+              let gameURL = Bundle.main.url(forResource: "index", withExtension: "html",
+                                            subdirectory: "Web/\(gamePath)") else {
             return
         }
-        webView.loadFileURL(indexURL, allowingReadAccessTo: webRoot)
+        spinner.startAnimating()
+        webView.loadFileURL(gameURL, allowingReadAccessTo: webRoot)
     }
 
     // MARK: - WKScriptMessageHandler
@@ -99,6 +137,8 @@ class GamesViewController: UIViewController, WKNavigationDelegate, WKScriptMessa
         case "jsLog":
             let msg = message.body as? String ?? ""
             print("[WebView JS] \(msg)")
+        case "goBack":
+            navigationController?.popViewController(animated: true)
         default:
             break
         }
@@ -130,6 +170,14 @@ class GamesViewController: UIViewController, WKNavigationDelegate, WKScriptMessa
     }
 
     // MARK: - WKNavigationDelegate
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        spinner.stopAnimating()
+    }
+
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+        spinner.stopAnimating()
+    }
 
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction,
                  decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
